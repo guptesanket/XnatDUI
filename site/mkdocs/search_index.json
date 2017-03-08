@@ -1,0 +1,19 @@
+{
+    "docs": [
+        {
+            "location": "/",
+            "text": "XnatDUI\n\n\nXnat Download-Upload UI\n\n\nStill working on this stuff. Hold still. :)",
+            "title": "Home"
+        },
+        {
+            "location": "/#xnatdui",
+            "text": "Xnat Download-Upload UI  Still working on this stuff. Hold still. :)",
+            "title": "XnatDUI"
+        },
+        {
+            "location": "/about/",
+            "text": "",
+            "title": "About"
+        }
+    ]
+}

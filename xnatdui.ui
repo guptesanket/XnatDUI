@@ -38,182 +38,301 @@
      <height>1080</height>
     </size>
    </property>
-   <layout class="QHBoxLayout" name="horizontalLayout_6">
+   <layout class="QVBoxLayout" name="verticalLayout_11">
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="QWidget" name="horizontalLayoutWidget">
+      <widget class="QGroupBox" name="horizontalGroupBox">
        <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
-         <layout class="QFormLayout" name="formLayout">
-          <item row="1" column="0">
-           <widget class="QLabel" name="lbl_host">
-            <property name="text">
-             <string>Host:</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="edt_host"/>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="lbl_username">
-            <property name="text">
-             <string>Username :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="edt_username"/>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="lbl_pwd">
-            <property name="text">
-             <string>Password :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLineEdit" name="edt_pwd">
-            <property name="inputMethodHints">
-             <set>Qt::ImhHiddenText</set>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="Line" name="line">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="Line" name="line_2">
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="1">
-           <layout class="QHBoxLayout" name="horizontalLayout_10">
-            <item>
-             <widget class="QPushButton" name="btn_SignIn">
-              <property name="text">
-               <string>Sign In</string>
+         <widget class="QFrame" name="frame">
+          <layout class="QFormLayout" name="formLayout">
+           <property name="horizontalSpacing">
+            <number>1</number>
+           </property>
+           <property name="verticalSpacing">
+            <number>1</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item row="1" column="0">
+            <widget class="QLabel" name="lbl_host">
+             <property name="text">
+              <string>Host:</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QLineEdit" name="edt_host">
+             <property name="placeholderText">
+              <string>http://&lt;XNAT-HOSTNAME&gt; or https://&lt;XNAT-HOSTNAME&gt;</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="lbl_username">
+             <property name="text">
+              <string>Username :</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLineEdit" name="edt_username">
+             <property name="placeholderText">
+              <string>Your XNAT username</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="lbl_pwd">
+             <property name="text">
+              <string>Password :</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QLineEdit" name="edt_pwd">
+             <property name="inputMethodHints">
+              <set>Qt::ImhHiddenText|Qt::ImhNoAutoUppercase|Qt::ImhNoPredictiveText|Qt::ImhSensitiveData</set>
+             </property>
+             <property name="echoMode">
+              <enum>QLineEdit::Password</enum>
+             </property>
+             <property name="cursorPosition">
+              <number>0</number>
+             </property>
+             <property name="placeholderText">
+              <string>ENTER PASSWORD</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_10">
+             <item>
+              <widget class="QPushButton" name="btn_SignIn">
+               <property name="text">
+                <string>Sign In</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lbl_status">
+               <property name="styleSheet">
+                <string notr="true">background-color: #ffffcc;</string>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="Line" name="line_4">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="frame">
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <item>
+            <widget class="QGroupBox" name="grp_project">
+             <property name="title">
+              <string>Select Project</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_14">
+              <property name="spacing">
+               <number>0</number>
               </property>
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QComboBox" name="cmb_project"/>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSplitter" name="splitter_8">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <widget class="QWidget" name="layoutWidget">
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
+               <item>
+                <widget class="QPushButton" name="btn_refresh">
+                 <property name="text">
+                  <string>Refresh Conn</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="btn_reset">
+                 <property name="text">
+                  <string>Reset All</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="lbl_status">
-              <property name="styleSheet">
-               <string notr="true">background-color: #ffffcc;</string>
-              </property>
-              <property name="text">
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="Line" name="line_6">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QFrame" name="frame">
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="QSplitter" name="splitter_7">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <widget class="QGroupBox" name="grp_what">
+              <property name="title">
                <string/>
               </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_6">
-          <item>
-           <widget class="QComboBox" name="cmb_project"/>
-          </item>
-          <item>
-           <spacer name="verticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_4">
-            <item>
-             <widget class="QPushButton" name="btn_refresh">
-              <property name="text">
-               <string>Refresh</string>
+              <property name="flat">
+               <bool>true</bool>
               </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <property name="leftMargin">
+                <number>1</number>
+               </property>
+               <property name="topMargin">
+                <number>1</number>
+               </property>
+               <property name="rightMargin">
+                <number>1</number>
+               </property>
+               <property name="bottomMargin">
+                <number>1</number>
+               </property>
+               <item>
+                <widget class="QRadioButton" name="rb_sel_download">
+                 <property name="text">
+                  <string>Download</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="rb_sel_upload">
+                 <property name="text">
+                  <string>Upload</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
-            </item>
-            <item>
-             <widget class="QPushButton" name="btn_reset">
-              <property name="text">
-               <string>Reset</string>
+             <widget class="QGroupBox" name="grp_download_method">
+              <property name="title">
+               <string/>
               </property>
+              <property name="flat">
+               <bool>true</bool>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <property name="leftMargin">
+                <number>1</number>
+               </property>
+               <property name="topMargin">
+                <number>1</number>
+               </property>
+               <property name="rightMargin">
+                <number>1</number>
+               </property>
+               <property name="bottomMargin">
+                <number>1</number>
+               </property>
+               <item>
+                <widget class="QRadioButton" name="rb_down_https">
+                 <property name="text">
+                  <string>via HTTPS</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="rb_down_nfs">
+                 <property name="text">
+                  <string>via NFS</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
-            </item>
-           </layout>
-          </item>
-         </layout>
-        </item>
-        <item>
-         <layout class="QVBoxLayout" name="verticalLayout_4">
-          <item>
-           <widget class="QGroupBox" name="grp_what">
-            <property name="title">
-             <string/>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_5">
-             <item>
-              <widget class="QRadioButton" name="rb_what_download">
-               <property name="text">
-                <string>Download</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QRadioButton" name="rb_what_upload">
-               <property name="text">
-                <string>Upload</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-          <item>
-           <widget class="QGroupBox" name="grp_download_method">
-            <property name="title">
-             <string/>
-            </property>
-            <property name="flat">
-             <bool>false</bool>
-            </property>
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QRadioButton" name="rb_down_https">
-               <property name="text">
-                <string>via HTTPS</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QRadioButton" name="rb_down_nfs">
-               <property name="text">
-                <string>via NFS</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </item>
-         </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="horizontalLayoutWidget_2">
+      <widget class="QGroupBox" name="horizontalGroupBox_2">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
          <widget class="QPushButton" name="btn_page1">
           <property name="text">
@@ -245,12 +364,37 @@
         <item>
          <widget class="QPushButton" name="btn_page5">
           <property name="text">
+           <string>Export Selection</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_page6">
+          <property name="text">
            <string>Run Process</string>
           </property>
          </widget>
         </item>
         <item>
-         <widget class="QToolButton" name="toolButton">
+         <widget class="QPushButton" name="btn_sysconfig">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>20</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="maximumSize">
+           <size>
+            <width>30</width>
+            <height>16777215</height>
+           </size>
+          </property>
           <property name="text">
            <string>...</string>
           </property>
@@ -271,18 +415,39 @@
          <height>0</height>
         </size>
        </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Sunken</enum>
+       </property>
+       <property name="lineWidth">
+        <number>1</number>
+       </property>
        <property name="currentIndex">
         <number>0</number>
        </property>
-       <widget class="QWidget" name="page">
+       <widget class="QWidget" name="page_1">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
          <item>
           <widget class="QSplitter" name="splitter_2">
+           <property name="toolTipDuration">
+            <number>-1</number>
+           </property>
+           <property name="lineWidth">
+            <number>0</number>
+           </property>
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
            </property>
+           <property name="handleWidth">
+            <number>1</number>
+           </property>
            <widget class="QWidget" name="verticalLayoutWidget_2">
             <layout class="QVBoxLayout" name="verticalLayout_7">
+             <property name="spacing">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QLabel" name="lbl_sub_2">
                <property name="text">
@@ -291,7 +456,11 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="edt_search_subj"/>
+              <widget class="QLineEdit" name="edt_search_subj">
+               <property name="placeholderText">
+                <string>Search SUBJECT label</string>
+               </property>
+              </widget>
              </item>
              <item>
               <widget class="QListWidget" name="lst_subjects"/>
@@ -300,6 +469,9 @@
            </widget>
            <widget class="QWidget" name="verticalLayoutWidget_3">
             <layout class="QVBoxLayout" name="verticalLayout_8">
+             <property name="spacing">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QLabel" name="lbl_sess_2">
                <property name="text">
@@ -308,7 +480,11 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="edt_search_sess"/>
+              <widget class="QLineEdit" name="edt_search_sess">
+               <property name="placeholderText">
+                <string>Search SESSION Label</string>
+               </property>
+              </widget>
              </item>
              <item>
               <widget class="QTreeWidget" name="tree_sessions">
@@ -323,6 +499,9 @@
            </widget>
            <widget class="QWidget" name="verticalLayoutWidget_4">
             <layout class="QVBoxLayout" name="verticalLayout_9">
+             <property name="spacing">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QLabel" name="lbl_scan_2">
                <property name="text">
@@ -331,36 +510,53 @@
               </widget>
              </item>
              <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_16">
-               <item>
-                <widget class="QCheckBox" name="chk_usable">
-                 <property name="text">
-                  <string>Usable</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="chk_unknown">
-                 <property name="text">
-                  <string>Unknown</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="chk_questionable">
-                 <property name="text">
-                  <string>Questionable</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QCheckBox" name="chk_unusable">
-                 <property name="text">
-                  <string>Unusable</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+              <widget class="QGroupBox" name="groupBox">
+               <layout class="QHBoxLayout" name="horizontalLayout_16">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <item>
+                 <widget class="QCheckBox" name="chk_usable">
+                  <property name="text">
+                   <string>Usable</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="chk_unknown">
+                  <property name="text">
+                   <string>Unknown</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="chk_questionable">
+                  <property name="text">
+                   <string>Questionable</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="chk_unusable">
+                  <property name="text">
+                   <string>Unusable</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
              </item>
              <item>
               <widget class="QTreeWidget" name="tree_scans">
@@ -404,7 +600,11 @@
              <item>
               <layout class="QFormLayout" name="formLayout_2">
                <item row="0" column="0">
-                <widget class="QLineEdit" name="edt_path_txt"/>
+                <widget class="QLineEdit" name="edt_path_txt">
+                 <property name="placeholderText">
+                  <string>Enter text to Send</string>
+                 </property>
+                </widget>
                </item>
                <item row="0" column="1">
                 <widget class="QPushButton" name="btn_send_edt">
@@ -515,7 +715,7 @@
              </item>
             </layout>
            </widget>
-           <widget class="QGroupBox" name="grp_path">
+           <widget class="QGroupBox" name="grp_send_path_loc_2">
             <property name="title">
              <string>Create Unique Paths</string>
             </property>
@@ -570,7 +770,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QGroupBox" name="grp_path_2">
+          <widget class="QGroupBox" name="grp_path">
            <property name="title">
             <string>Create Unique Paths</string>
            </property>
@@ -581,119 +781,124 @@
        <widget class="QWidget" name="page_3">
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
-          <widget class="QSplitter" name="splitter_4">
+          <widget class="QSplitter" name="splitter_6">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Vertical</enum>
            </property>
-           <widget class="QListWidget" name="lst_sel_log"/>
-           <widget class="QListWidget" name="lst_dest_pick"/>
-           <widget class="QListWidget" name="lst_filename"/>
-           <widget class="QListWidget" name="lst_cmd"/>
+           <widget class="QSplitter" name="splitter_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <widget class="QListWidget" name="lst_sel_log"/>
+            <widget class="QListWidget" name="lst_dest_pick"/>
+            <widget class="QListWidget" name="lst_filename"/>
+            <widget class="QListWidget" name="lst_cmd"/>
+           </widget>
+           <widget class="QWidget" name="layoutWidget">
+            <layout class="QHBoxLayout" name="horizontalLayout_12">
+             <item>
+              <widget class="QGroupBox" name="groupBox_2">
+               <property name="title">
+                <string>Select Format</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="0">
+                 <widget class="QRadioButton" name="rb_dcm">
+                  <property name="text">
+                   <string>DICOM</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QRadioButton" name="rb_afni">
+                  <property name="text">
+                   <string>AFNI</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QRadioButton" name="rb_nifti">
+                  <property name="text">
+                   <string>NIFTI</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QRadioButton" name="rb_custom">
+                  <property name="text">
+                   <string>Custom</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="title">
+                <string>Conversion Script</string>
+               </property>
+               <layout class="QHBoxLayout" name="horizontalLayout_14">
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_13">
+                  <item>
+                   <widget class="QLineEdit" name="edt_down_status">
+                    <property name="font">
+                     <font>
+                      <weight>75</weight>
+                      <bold>true</bold>
+                     </font>
+                    </property>
+                    <property name="text">
+                     <string>Status: Ready</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLineEdit" name="edt_down_cmd"/>
+                  </item>
+                 </layout>
+                </item>
+                <item>
+                 <layout class="QVBoxLayout" name="verticalLayout_12">
+                  <item>
+                   <widget class="QPushButton" name="btn_refresh_cmd">
+                    <property name="text">
+                     <string>Refresh</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="btn_download">
+                    <property name="font">
+                     <font>
+                      <pointsize>10</pointsize>
+                      <weight>75</weight>
+                      <bold>true</bold>
+                     </font>
+                    </property>
+                    <property name="autoFillBackground">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>   DOWNLOAD  </string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </widget>
-         </item>
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_12">
-           <item>
-            <widget class="QGroupBox" name="groupBox_2">
-             <property name="title">
-              <string>Select Format</string>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_2">
-              <item row="0" column="0">
-               <widget class="QRadioButton" name="rb_dcm">
-                <property name="text">
-                 <string>DICOM</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QRadioButton" name="rb_afni">
-                <property name="text">
-                 <string>AFNI</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1">
-               <widget class="QRadioButton" name="rb_nifti">
-                <property name="text">
-                 <string>NIFTI</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1">
-               <widget class="QRadioButton" name="rb_custom">
-                <property name="text">
-                 <string>Custom</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="title">
-              <string>Conversion Script</string>
-             </property>
-             <layout class="QHBoxLayout" name="horizontalLayout_14">
-              <item>
-               <layout class="QVBoxLayout" name="verticalLayout_13">
-                <item>
-                 <widget class="QLineEdit" name="edt_down_status">
-                  <property name="font">
-                   <font>
-                    <weight>75</weight>
-                    <bold>true</bold>
-                   </font>
-                  </property>
-                  <property name="text">
-                   <string>Status: Ready</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QLineEdit" name="edt_down_cmd"/>
-                </item>
-               </layout>
-              </item>
-              <item>
-               <layout class="QVBoxLayout" name="verticalLayout_12">
-                <item>
-                 <widget class="QPushButton" name="btn_refresh_cmd">
-                  <property name="text">
-                   <string>Refresh</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="btn_download">
-                  <property name="font">
-                   <font>
-                    <pointsize>10</pointsize>
-                    <weight>75</weight>
-                    <bold>true</bold>
-                   </font>
-                  </property>
-                  <property name="autoFillBackground">
-                   <bool>false</bool>
-                  </property>
-                  <property name="text">
-                   <string>   DOWNLOAD  </string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-             </layout>
-            </widget>
-           </item>
-          </layout>
          </item>
         </layout>
        </widget>
@@ -746,6 +951,9 @@
                    <width>0</width>
                    <height>25</height>
                   </size>
+                 </property>
+                 <property name="placeholderText">
+                  <string>Enter new RESOURCE Name</string>
                  </property>
                 </widget>
                </item>
@@ -803,17 +1011,52 @@
          </item>
         </layout>
        </widget>
-       <widget class="QWidget" name="page_5"/>
+       <widget class="QWidget" name="page_5">
+        <layout class="QVBoxLayout" name="verticalLayout_17">
+         <item>
+          <widget class="QSplitter" name="splitter_9">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <widget class="QTableView" name="tableView"/>
+           <widget class="QWidget" name="horizontalLayoutWidget">
+            <layout class="QHBoxLayout" name="horizontalLayout_6">
+             <item>
+              <widget class="QPushButton" name="btn_export_csv">
+               <property name="text">
+                <string>Export to CSV</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget class="QPushButton" name="btn_export_xlsx">
+               <property name="text">
+                <string>Export to XLSX</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </widget>
-      <widget class="QWidget" name="verticalLayoutWidget">
+      <widget class="QGroupBox" name="verticalGroupBox">
        <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="Line" name="line_3">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-         </widget>
-        </item>
         <item>
          <widget class="QProgressBar" name="pb_final">
           <property name="value">
@@ -873,16 +1116,6 @@
      </widget>
     </item>
    </layout>
-  </widget>
-  <widget class="QMenuBar" name="menuBar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>790</width>
-     <height>21</height>
-    </rect>
-   </property>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">

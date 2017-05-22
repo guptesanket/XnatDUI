@@ -1,0 +1,48 @@
+# This is a configuration file for Xnat Download Upload UI .
+# If you dont know what you are doing, please dont modify this file.
+# Config for XnatDUI.py 
+
+#############
+#
+#
+#############
+
+sys-init:
+  host: "https://cerebra.nida.nih.gov"
+  proj2rm:
+    - "000"
+    - "Demographics"
+    - "NRB_6_21_14"
+  convprogs:
+    - "Dimon"
+    - "to3d"
+    - "dcm2nii"
+    - "dcm2niix"
+  scan-quality:
+    - "usable"
+    - "unknown"
+    - "questionable"
+    - "unusable"
+  # path where to store xnat cache, logfiles & app cache. Each value a directory name
+  cache-location: 
+    - "~"
+    - ".xnat-dui-cache"
+  #Log level to store in logfile
+  loglevel: "detail" #Possible values: detail , short
+down-init:
+  nfs-mnt: "/.NFS/xnat"
+  pathprefix-linux: "/prot/%PROJ%"
+  pathprefix-win: "%PROJ%"
+  fileprefix: "%SCAN%"
+  cmbpath:
+    - "PROJ"
+    - "SUBJ"
+    - "SESS"
+    - "SCAN"
+  cleanup:
+    - "dimon.files"
+    - "GERT_Reco"
+upload-init:
+  res_names:
+    - "MRSI"
+    - "TASKDATA"

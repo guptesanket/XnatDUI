@@ -25,6 +25,9 @@
   <property name="windowTitle">
    <string>Xnat Download Upload Interface v1.0</string>
   </property>
+  <property name="toolButtonStyle">
+   <enum>Qt::ToolButtonIconOnly</enum>
+  </property>
   <widget class="QWidget" name="centralWidget">
    <property name="sizePolicy">
     <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
@@ -425,10 +428,25 @@
         <number>1</number>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>4</number>
        </property>
        <widget class="QWidget" name="page_1">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QSplitter" name="splitter_2">
            <property name="toolTipDuration">
@@ -510,7 +528,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QGroupBox" name="groupBox">
+              <widget class="QGroupBox" name="grp_scan_quality">
                <layout class="QHBoxLayout" name="horizontalLayout_16">
                 <property name="spacing">
                  <number>0</number>
@@ -528,30 +546,44 @@
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QCheckBox" name="chk_usable">
+                 <widget class="QCheckBox" name="chk_quality_1">
                   <property name="text">
-                   <string>Usable</string>
+                   <string>Qlty1</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="chk_unknown">
+                 <widget class="QCheckBox" name="chk_quality_2">
                   <property name="text">
-                   <string>Unknown</string>
+                   <string>Qlty2</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="chk_questionable">
+                 <widget class="QCheckBox" name="chk_quality_3">
                   <property name="text">
-                   <string>Questionable</string>
+                   <string>Qlty3</string>
                   </property>
                  </widget>
                 </item>
                 <item>
-                 <widget class="QCheckBox" name="chk_unusable">
+                 <widget class="QCheckBox" name="chk_quality_4">
                   <property name="text">
-                   <string>Unusable</string>
+                   <string>Qlty4</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="chk_quality_5">
+                  <property name="text">
+                   <string>Qlty5</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QCheckBox" name="chk_quality_6">
+                  <property name="text">
+                   <string>Qlty6</string>
                   </property>
                  </widget>
                 </item>
@@ -575,6 +607,21 @@
        </widget>
        <widget class="QWidget" name="page_2">
         <layout class="QVBoxLayout" name="verticalLayout_10">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QSplitter" name="splitter_3">
            <property name="orientation">
@@ -597,8 +644,26 @@
              <string/>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_9">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
-              <layout class="QFormLayout" name="formLayout_2">
+              <layout class="QGridLayout" name="gridLayout_3">
+               <property name="spacing">
+                <number>0</number>
+               </property>
                <item row="0" column="0">
                 <widget class="QLineEdit" name="edt_path_txt">
                  <property name="placeholderText">
@@ -657,7 +722,25 @@
                  <height>0</height>
                 </size>
                </property>
+               <property name="lineWidth">
+                <number>0</number>
+               </property>
                <layout class="QGridLayout" name="gridLayout">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>0</number>
+                </property>
                 <item row="0" column="0">
                  <widget class="QPushButton" name="btn_reset_path_selected">
                   <property name="sizePolicy">
@@ -698,6 +781,12 @@
                 </item>
                 <item row="0" column="1">
                  <widget class="QPushButton" name="btn_mk_bids">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="text">
                    <string>Make BIDS Paths</string>
                   </property>
@@ -705,6 +794,12 @@
                 </item>
                 <item row="1" column="1">
                  <widget class="QCheckBox" name="chk_BIDS_extra">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="text">
                    <string>Download BIDS</string>
                   </property>
@@ -717,11 +812,26 @@
            </widget>
            <widget class="QGroupBox" name="grp_send_path_loc_2">
             <property name="title">
-             <string>Create Unique Paths</string>
+             <string/>
             </property>
             <layout class="QVBoxLayout" name="layout_path_outer">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
               <layout class="QHBoxLayout" name="horizontalLayout_11">
+               <property name="spacing">
+                <number>0</number>
+               </property>
                <item>
                 <widget class="QCheckBox" name="chk_path_select_all_path">
                  <property name="text">
@@ -748,9 +858,24 @@
              </sizepolicy>
             </property>
             <property name="title">
-             <string>Where to Send</string>
+             <string/>
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_8">
+             <property name="spacing">
+              <number>0</number>
+             </property>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
              <item>
               <widget class="QRadioButton" name="rb_send_path">
                <property name="text">
@@ -780,6 +905,21 @@
        </widget>
        <widget class="QWidget" name="page_3">
         <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QSplitter" name="splitter_6">
            <property name="orientation">
@@ -904,6 +1044,21 @@
        </widget>
        <widget class="QWidget" name="page_4">
         <layout class="QHBoxLayout" name="horizontalLayout_17">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QSplitter" name="splitter_5">
            <property name="orientation">
@@ -1013,6 +1168,21 @@
        </widget>
        <widget class="QWidget" name="page_5">
         <layout class="QVBoxLayout" name="verticalLayout_17">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
          <item>
           <widget class="QSplitter" name="splitter_9">
            <property name="orientation">
@@ -1055,22 +1225,35 @@
         </layout>
        </widget>
       </widget>
-      <widget class="QGroupBox" name="verticalGroupBox">
+      <widget class="QFrame" name="verticalFrame">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>100</height>
+        </size>
+       </property>
        <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="QProgressBar" name="pb_final">
-          <property name="value">
-           <number>24</number>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QProgressBar" name="pb_inter">
-          <property name="value">
-           <number>24</number>
-          </property>
-         </widget>
-        </item>
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
         <item>
          <widget class="QTabWidget" name="tab_logger">
           <property name="maximumSize">
@@ -1082,6 +1265,30 @@
           <property name="currentIndex">
            <number>0</number>
           </property>
+          <widget class="QWidget" name="tab_progress">
+           <attribute name="title">
+            <string>Page</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_18">
+            <item>
+             <widget class="QProgressBar" name="pb_final">
+              <property name="value">
+               <number>24</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QProgressBar" name="pb_inter">
+              <property name="value">
+               <number>24</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+           <zorder>pb_inter</zorder>
+           <zorder>pb_final</zorder>
+           <zorder>pb_final</zorder>
+          </widget>
           <widget class="QWidget" name="tab_short">
            <attribute name="title">
             <string>Short Logger</string>

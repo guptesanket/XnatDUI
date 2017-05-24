@@ -32,7 +32,7 @@ sys-init:
 down-init:
   nfs-mnt: "/.NFS/xnat"
   pathprefix-linux: "/prot/%PROJ%"
-  pathprefix-win: "%PROJ%"
+  pathprefix-win: "C:\\Users\\Default\\Downloads\\%PROJ%"
   fileprefix: "%SCAN%"
   cmbpath:
     - "PROJ"

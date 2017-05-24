@@ -21,7 +21,8 @@ from string import whitespace
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
-
+#Pre-set ComboBox translations for Path Creation screen
+CMBPATH=['PROJ','SUBJ','SESS','SCAN']
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -107,7 +108,9 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_send_cmb.clicked.connect(self.send2path_cmb)
         self.main_ui.btn_reset_path_selected.clicked.connect(self.reset_path_selected)
         self.main_ui.btn_reset_path_all.clicked.connect(self.reset_path_all)
+        self.main_ui.chk_path_all_scans.setChecked(True)
         self.main_ui.chk_path_all_scans.clicked.connect(self.send2allScanChkBoxes)
+        self.main_ui.cmb_path_txt.addItems(CMBPATH)
         
         #Variables with data
         self.curr_proj=None #Currently selected Xnat Project
@@ -170,7 +173,9 @@ class StartQT(QtWidgets.QMainWindow):
                 
                 #Getting hbox2 layout that has the textboxes
                     txt_layout=grp_layout.itemAt(1).layout()
-                    txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+self.main_ui.edt_path_txt.text())
+                    #txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+self.main_ui.edt_path_txt.text())
+                    txt_layout.itemAt(0).widget().setText(os.path.join(txt_layout.itemAt(0).widget().text(),self.main_ui.edt_path_txt.text()))
+                    
                     
         elif self.main_ui.rb_send_file.isChecked():
                             
@@ -187,6 +192,7 @@ class StartQT(QtWidgets.QMainWindow):
                 #Getting hbox2 layout that has the textboxes
                     txt_layout=grp_layout.itemAt(1).layout()
                     txt_layout.itemAt(1).widget().setText(txt_layout.itemAt(1).widget().text()+self.main_ui.edt_path_txt.text())
+                    #txt_layout.itemAt(1).widget().setText(os.path.join(txt_layout.itemAt(1).widget().text(),self.main_ui.edt_path_txt.text()))
         else:
             self.PopupDlg("Please Select WHERE to send this text !")
 
@@ -200,7 +206,8 @@ class StartQT(QtWidgets.QMainWindow):
                
                 #Getting hbox2 layout that has the textboxes
                     txt_layout=grp_layout.itemAt(1).layout()
-                    txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+"%"+str(self.main_ui.cmb_path_txt.currentText())+"%")
+                    #txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+"%"+str(self.main_ui.cmb_path_txt.currentText())+"%")
+                    txt_layout.itemAt(0).widget().setText(os.path.join(txt_layout.itemAt(0).widget().text(),"%"+str(self.main_ui.cmb_path_txt.currentText())+"%"))
                     
         elif self.main_ui.rb_send_file.isChecked():
                             
@@ -212,6 +219,7 @@ class StartQT(QtWidgets.QMainWindow):
                 #Getting hbox2 layout that has the textboxes
                     txt_layout=grp_layout.itemAt(1).layout()
                     txt_layout.itemAt(1).widget().setText(txt_layout.itemAt(1).widget().text()+"%"+str(self.main_ui.cmb_path_txt.currentText())+"%")
+                    #txt_layout.itemAt(1).widget().setText(os.path.join(txt_layout.itemAt(1).widget().text(),"%"+str(self.main_ui.cmb_path_txt.currentText())+"%"))
         else:
             self.PopupDlg("Please Select WHERE to send this text !")
     
@@ -514,8 +522,10 @@ class StartQT(QtWidgets.QMainWindow):
 #                        chkbox=QtGui.QCheckBox("Select")
 #                        chkbox.setFixedWidth(400)
 #                        chkbox.setFixedHeight(30)
-
-                        txtpath=QtWidgets.QLineEdit(self.sysConfig['down-init']['pathprefix-linux'])
+                        if system()=='Windows':
+                            txtpath=QtWidgets.QLineEdit(self.sysConfig['down-init']['pathprefix-win'])
+                        else:
+                            txtpath=QtWidgets.QLineEdit(self.sysConfig['down-init']['pathprefix-linux'])
                         txtpath.setFixedWidth(500)
                         txtpath.setFixedHeight(20)
                         txtfname=QtWidgets.QLineEdit(self.sysConfig['down-init']['fileprefix'])
@@ -553,81 +563,92 @@ class StartQT(QtWidgets.QMainWindow):
         #self.reset_process()
         #self.reset_upload()
         self.fl_refresh_page6=True
-
+        print("Refreshing Page3 Yay")
         #   GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
 
-#        self.reset_download()
+        self.reset_download()
 #        if system()=='Windows':
 #            self.PopupDlg("Download currently doesn't work on Windows ! Sorry")
 #            return
-#        for scan_grp in self.main_ui.grp_allScans:
-#            
-#            #Getting the GroupBoxes for each selected scan types
-#            grp_layout=scan_grp.layout()
-#
-#            self.selected_uniq_scans[str(scan_grp.title())]=[str(grp_layout.itemAt(1).layout().itemAt(0).widget().text()),str(grp_layout.itemAt(1).layout().itemAt(1).widget().text())]
-#        
-#        for subj in self.dict_checked_all:
-#            for sess in self.dict_checked_all[subj]:
-#                for scan in self.dict_checked_all[subj][sess][1][1]: #Only Checked Scans
-#                    scan_name=self.dict_checked_all[subj][sess][1][1][scan]
-#                    src_path="Proj:"+str(self.curr_proj)+"| Subj:"+str(subj)+"| Exp:"+str(sess)+"| Scan:"+str(scan_name)
-#                    #print src_path
-#                    int_path='/project/'+str(self.curr_proj)+'/subjects/'+str(subj)+'/experiments/'+str(sess)+'/scans/'+str(scan)
-#                    #print int_path
-#                    
-#                    dest_path=""
-#                    for dst_spl in [x for x in str(self.selected_uniq_scans[str(scan_name)][0]).split("%") if x]: #"%protocol%","%subject%","%session%","%scan%"
-#                        if dst_spl in ['proj','project','PROJ','PROJECT']:
-#                            dest_path+=str(self.curr_proj)
-#                        elif dst_spl in ["subject","subj","SUBJECT","SUBJ"]:
-#                            dest_path+=str(subj)
-#                        elif dst_spl in ["session","sess","SESSION","SESS"]:
-#                            dest_path+=str(sess)
-#                        elif dst_spl in ["scan","SCAN"]:
-#                            dest_path+=str(scan_name)
-#                        else:
-#                            dest_path+=str(dst_spl)
-#                    
-#                    dst_c_fn=""
-#                    for dst_fn in [x for x in str(self.selected_uniq_scans[str(scan_name)][1]).split("%") if x]:
-#                        if dst_fn in ['proj','project','PROJ','PROJECT']:
-#                            dst_c_fn+=str(self.curr_proj)
-#                        elif dst_fn in ["subject","subj","SUBJECT","SUBJ"]:
-#                            dst_c_fn+=str(subj)
-#                        elif dst_fn in ["session","sess","SESSION","SESS"]:
-#                            dst_c_fn+=str(sess)
-#                        elif dst_fn in ["scan","SCAN"]:
-#                            dst_c_fn+=str(scan_name)
-#                        else:
-#                            dst_c_fn+=dst_fn
-#
-#                    
-#                    #Removing Whitespaces
-#                    dest_path=dest_path.translate(None,whitespace)
-#                    dst_c_fn=dst_c_fn.translate(None,whitespace)
-#                    dst_c_fn=dst_c_fn.replace('/','-')
-#                    dst_c_fn=dst_c_fn.replace('#','')
-#                    
-#                    #Add to lists 
-#                    itm_src=QtGui.QListWidgetItem(src_path)
-#                    itm_dest=QtGui.QListWidgetItem(dest_path)
-#                    itm_fname=QtGui.QListWidgetItem(dst_c_fn)
-#                    
-#                    itm_src.setFlags(itm_src.flags() | QtCore.Qt.ItemIsEditable)                    
-#                    itm_dest.setFlags(itm_dest.flags() | QtCore.Qt.ItemIsEditable)
-#                    itm_fname.setFlags(itm_fname.flags() | QtCore.Qt.ItemIsEditable)
-#                    
-#                    #itm_dest.setData(1,QtCore.QVariant(int_path))
-#                    itm_dest.setToolTip(int_path)
-#                    
-#                    
-#                    
-#                    self.main_ui.lst_sel_log.addItem(itm_src)
-#                    self.main_ui.lst_dest_pick.addItem(itm_dest)
-#                    self.main_ui.lst_filename.addItem(itm_fname)
-#                    
-#                    self.download_cmd_refresh()
+        for scan_grp in self.main_ui.grp_allScans:
+            
+            #Getting the GroupBoxes for each selected scan types
+            grp_layout=scan_grp.layout()
+
+            self.selected_uniq_scans[str(scan_grp.title())]=[str(grp_layout.itemAt(1).layout().itemAt(0).widget().text()),str(grp_layout.itemAt(1).layout().itemAt(1).widget().text())]
+        
+        for subj in self.dict_checked_all:
+            for sess in self.dict_checked_all[subj]:
+                for scan in self.dict_checked_all[subj][sess][1][1]: #Only Checked Scans
+                    scan_name=self.dict_checked_all[subj][sess][1][1][scan]
+                    src_path="Proj:"+str(self.curr_proj)+"| Subj:"+str(subj)+"| Exp:"+str(sess)+"| Scan:"+str(scan_name)
+                    #print src_path
+                    int_path='/project/'+str(self.curr_proj)+'/subjects/'+str(subj)+'/experiments/'+str(sess)+'/scans/'+str(scan)
+                    #print int_path
+                    
+                    dest_path=""
+                    for dst_spl in [x for x in str(self.selected_uniq_scans[str(scan_name)][0]).split("%") if x]: #"%protocol%","%subject%","%session%","%scan%"
+                        if dst_spl in ['proj','project','PROJ','PROJECT']:
+                            dest_path+=str(self.curr_proj)
+                        elif dst_spl in ["subject","subj","SUBJECT","SUBJ"]:
+                            dest_path+=str(subj)
+                        elif dst_spl in ["session","sess","SESSION","SESS"]:
+                            dest_path+=str(sess)
+                        elif dst_spl in ["scan","SCAN"]:
+                            dest_path+=str(scan_name)
+                        else:
+                            dest_path+=str(dst_spl)
+                    
+                    dst_c_fn=""
+                    for dst_fn in [x for x in str(self.selected_uniq_scans[str(scan_name)][1]).split("%") if x]:
+                        if dst_fn in ['proj','project','PROJ','PROJECT']:
+                            dst_c_fn+=str(self.curr_proj)
+                        elif dst_fn in ["subject","subj","SUBJECT","SUBJ"]:
+                            dst_c_fn+=str(subj)
+                        elif dst_fn in ["session","sess","SESSION","SESS"]:
+                            dst_c_fn+=str(sess)
+                        elif dst_fn in ["scan","SCAN"]:
+                            dst_c_fn+=str(scan_name)
+                        else:
+                            dst_c_fn+=dst_fn
+
+                    
+                    #Removing Whitespaces
+                    dest_path=dest_path.translate(whitespace)
+                    dst_c_fn=dst_c_fn.translate(whitespace)
+                    dst_c_fn=dst_c_fn.replace('/','-')
+                    dst_c_fn=dst_c_fn.replace('#','')
+                    
+                    #Add to lists 
+                    itm_src=QtWidgets.QListWidgetItem(src_path)
+                    itm_dest=QtWidgets.QListWidgetItem(dest_path)
+                    itm_fname=QtWidgets.QListWidgetItem(dst_c_fn)
+                    
+                    itm_src.setFlags(itm_src.flags() | QtCore.Qt.ItemIsEditable)                    
+                    itm_dest.setFlags(itm_dest.flags() | QtCore.Qt.ItemIsEditable)
+                    itm_fname.setFlags(itm_fname.flags() | QtCore.Qt.ItemIsEditable)
+                    
+                    #itm_dest.setData(1,QtCore.QVariant(int_path))
+                    itm_dest.setToolTip(int_path)
+                    
+                    
+                    
+                    self.main_ui.lst_sel_log.addItem(itm_src)
+                    self.main_ui.lst_dest_pick.addItem(itm_dest)
+                    self.main_ui.lst_filename.addItem(itm_fname)
+                    
+                    self.download_cmd_refresh()
+                    
+    def download_cmd_refresh(self):
+        #Make FUll Command in the ListWidget
+        self.main_ui.lst_cmd.clear()
+        for subj in self.dict_checked_all:
+            for sess in self.dict_checked_all[subj]:
+                for scan in self.dict_checked_all[subj][sess][1][1]: #Only Checked Scans
+                    itm_cmd=QtWidgets.QListWidgetItem(self.main_ui.edt_down_cmd.text())
+                    itm_cmd.setFlags(itm_cmd.flags() | QtCore.Qt.ItemIsEditable)
+                    self.main_ui.lst_cmd.addItem(itm_cmd)
+
             
     def refresh_page4(self):
         pass
@@ -703,6 +724,7 @@ class StartQT(QtWidgets.QMainWindow):
                 self.main_ui.cmb_project.addItems(self.projects)
                 
             self.main_ui.edt_pwd.setText("")
+            
 
     def scan_quality_checked(self):
         """
@@ -765,6 +787,8 @@ class StartQT(QtWidgets.QMainWindow):
                 self.download_selected()
             elif self.main_ui.rb_sel_upload.isChecked():
                 self.upload_selected()
+            if not self.main_ui.rb_sel_download.isChecked() and not self.main_ui.rb_sel_upload.isChecked():
+                self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
             
     def reset_all_clicked(self):
         self.main_ui.cmb_project.setCurrentIndex(0)
@@ -882,6 +906,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.createScanQualityCheckBoxes()
         self.page1_clicked()
         self.populate_subjects()
+        self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:;"))
         
     def upload_selected(self):
         self.reset_internal()
@@ -894,6 +919,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.createScanQualityCheckBoxes()
         self.page1_clicked()
         self.populate_subjects()
+        self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:;"))
         
     def loadConfig(self):
         """

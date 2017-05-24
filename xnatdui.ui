@@ -497,7 +497,7 @@
         <number>1</number>
        </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page_1">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -920,7 +920,7 @@
         </layout>
        </widget>
        <widget class="QWidget" name="page_3">
-        <layout class="QVBoxLayout" name="verticalLayout_2">
+        <layout class="QVBoxLayout" name="verticalLayout_22">
          <property name="spacing">
           <number>0</number>
          </property>
@@ -938,26 +938,105 @@
          </property>
          <item>
           <widget class="QSplitter" name="splitter_6">
+           <property name="lineWidth">
+            <number>0</number>
+           </property>
            <property name="orientation">
             <enum>Qt::Vertical</enum>
+           </property>
+           <property name="handleWidth">
+            <number>1</number>
            </property>
            <widget class="QSplitter" name="splitter_4">
             <property name="orientation">
              <enum>Qt::Horizontal</enum>
             </property>
-            <widget class="QListWidget" name="lst_sel_log"/>
-            <widget class="QListWidget" name="lst_dest_pick"/>
-            <widget class="QListWidget" name="lst_filename"/>
-            <widget class="QListWidget" name="lst_cmd"/>
+            <property name="handleWidth">
+             <number>5</number>
+            </property>
+            <widget class="QWidget" name="verticalLayoutWidget">
+             <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QListWidget" name="lst_sel_log">
+                <property name="autoScrollMargin">
+                 <number>10</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="verticalLayoutWidget_5">
+             <layout class="QVBoxLayout" name="verticalLayout_19">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QListWidget" name="lst_dest_pick">
+                <property name="autoScrollMargin">
+                 <number>10</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="verticalLayoutWidget_6">
+             <layout class="QVBoxLayout" name="verticalLayout_20">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QListWidget" name="lst_filename">
+                <property name="autoScrollMargin">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="verticalLayoutWidget_7">
+             <layout class="QVBoxLayout" name="verticalLayout_21">
+              <property name="spacing">
+               <number>0</number>
+              </property>
+              <item>
+               <widget class="QListWidget" name="lst_cmd">
+                <property name="autoScrollMargin">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
            </widget>
            <widget class="QWidget" name="layoutWidget">
             <layout class="QHBoxLayout" name="horizontalLayout_12">
+             <property name="spacing">
+              <number>3</number>
+             </property>
              <item>
               <widget class="QGroupBox" name="groupBox_2">
                <property name="title">
                 <string>Select Format</string>
                </property>
                <layout class="QGridLayout" name="gridLayout_2">
+                <property name="leftMargin">
+                 <number>5</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
+                <property name="spacing">
+                 <number>0</number>
+                </property>
                 <item row="0" column="0">
                  <widget class="QRadioButton" name="rb_dcm">
                   <property name="text">
@@ -1001,6 +1080,21 @@
                 <string>Conversion Script</string>
                </property>
                <layout class="QHBoxLayout" name="horizontalLayout_14">
+                <property name="spacing">
+                 <number>0</number>
+                </property>
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
+                <property name="rightMargin">
+                 <number>0</number>
+                </property>
+                <property name="bottomMargin">
+                 <number>0</number>
+                </property>
                 <item>
                  <layout class="QVBoxLayout" name="verticalLayout_13">
                   <item>
@@ -1302,7 +1396,6 @@
             </item>
            </layout>
            <zorder>pb_inter</zorder>
-           <zorder>pb_final</zorder>
            <zorder>pb_final</zorder>
           </widget>
           <widget class="QWidget" name="tab_short">

@@ -101,6 +101,14 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_sessions.header().hide()
         self.main_ui.tree_scans.header().hide()
         
+        
+        #Button Connections for Path making buttons
+        self.main_ui.btn_send_edt.clicked.connect(self.send2path_edt)
+        self.main_ui.btn_send_cmb.clicked.connect(self.send2path_cmb)
+        self.main_ui.btn_reset_path_selected.clicked.connect(self.reset_path_selected)
+        self.main_ui.btn_reset_path_all.clicked.connect(self.reset_path_all)
+        self.main_ui.chk_path_all_scans.clicked.connect(self.send2allScanChkBoxes)
+        
         #Variables with data
         self.curr_proj=None #Currently selected Xnat Project
         
@@ -147,6 +155,107 @@ class StartQT(QtWidgets.QMainWindow):
 
         self.page1_clicked() #Go to the first page.
     
+    def send2path_edt(self):
+        if self.main_ui.rb_send_path.isChecked():
+                
+            for scan_grp in self.main_ui.grp_allScans:
+                #Getting the GroupBoxes for each selected scan types
+                if scan_grp.isChecked():
+                    grp_layout=scan_grp.layout()
+                
+    #            #Getting hbox1 layout that has checkboxes
+    #            chk_layout=grp_layout.itemAt(0).layout()
+    #            print chk_layout.itemAt(0).widget().text()
+    #            print chk_layout.itemAt(1).widget().text()
+                
+                #Getting hbox2 layout that has the textboxes
+                    txt_layout=grp_layout.itemAt(1).layout()
+                    txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+self.main_ui.edt_path_txt.text())
+                    
+        elif self.main_ui.rb_send_file.isChecked():
+                            
+            for scan_grp in self.main_ui.grp_allScans:
+                #Getting the GroupBoxes for each selected scan types
+                if scan_grp.isChecked():
+                    grp_layout=scan_grp.layout()
+                
+    #            #Getting hbox1 layout that has checkboxes
+    #            chk_layout=grp_layout.itemAt(0).layout()
+    #            print chk_layout.itemAt(0).widget().text()
+    #            print chk_layout.itemAt(1).widget().text()
+                
+                #Getting hbox2 layout that has the textboxes
+                    txt_layout=grp_layout.itemAt(1).layout()
+                    txt_layout.itemAt(1).widget().setText(txt_layout.itemAt(1).widget().text()+self.main_ui.edt_path_txt.text())
+        else:
+            self.PopupDlg("Please Select WHERE to send this text !")
+
+    def send2path_cmb(self):
+        if self.main_ui.rb_send_path.isChecked():
+                
+            for scan_grp in self.main_ui.grp_allScans:
+                #Getting the GroupBoxes for each selected scan types
+                if scan_grp.isChecked():
+                    grp_layout=scan_grp.layout()
+               
+                #Getting hbox2 layout that has the textboxes
+                    txt_layout=grp_layout.itemAt(1).layout()
+                    txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+"%"+str(self.main_ui.cmb_path_txt.currentText())+"%")
+                    
+        elif self.main_ui.rb_send_file.isChecked():
+                            
+            for scan_grp in self.main_ui.grp_allScans:
+                #Getting the GroupBoxes for each selected scan types
+                if scan_grp.isChecked():
+                    grp_layout=scan_grp.layout()
+
+                #Getting hbox2 layout that has the textboxes
+                    txt_layout=grp_layout.itemAt(1).layout()
+                    txt_layout.itemAt(1).widget().setText(txt_layout.itemAt(1).widget().text()+"%"+str(self.main_ui.cmb_path_txt.currentText())+"%")
+        else:
+            self.PopupDlg("Please Select WHERE to send this text !")
+    
+
+    def send2allScanChkBoxes(self):
+        if self.main_ui.chk_path_all_scans.isChecked():
+                
+            for scan_grp in self.main_ui.grp_allScans:
+                #Getting the GroupBoxes for each selected scan types
+                scan_grp.setChecked(True)
+        else:
+            for scan_grp in self.main_ui.grp_allScans:
+                #Getting the GroupBoxes for each selected scan types
+                scan_grp.setChecked(False)
+
+
+    def reset_path_selected(self):
+# GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
+        for scan_grp in self.main_ui.grp_allScans:
+            #Getting the GroupBoxes for each selected scan types
+            if scan_grp.isChecked():
+                grp_layout=scan_grp.layout()
+                        
+            #Getting hbox2 layout that has the textboxes
+                txt_layout=grp_layout.itemAt(1).layout()
+                txt_layout.itemAt(0).widget().setText("")
+                txt_layout.itemAt(1).widget().setText("")
+    
+    def reset_path_all(self):
+# GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
+        for scan_grp in self.main_ui.grp_allScans:
+            #Getting the GroupBoxes for each selected scan types
+            #print scan_grp.isChecked()
+            grp_layout=scan_grp.layout()
+            
+#            #Getting hbox1 layout that has checkboxes
+#            chk_layout=grp_layout.itemAt(0).layout()
+#            print chk_layout.itemAt(0).widget().text()
+#            print chk_layout.itemAt(1).widget().text()
+            
+            #Getting hbox2 layout that has the textboxes
+            txt_layout=grp_layout.itemAt(1).layout()
+            txt_layout.itemAt(0).widget().setText("")
+            txt_layout.itemAt(1).widget().setText("")
     
     
     def handle_scan(self,item,column):
@@ -407,11 +516,11 @@ class StartQT(QtWidgets.QMainWindow):
 #                        chkbox.setFixedHeight(30)
 
                         txtpath=QtWidgets.QLineEdit(self.sysConfig['down-init']['pathprefix-linux'])
-                        txtpath.setFixedWidth(650)
-                        txtpath.setFixedHeight(30)
+                        txtpath.setFixedWidth(500)
+                        txtpath.setFixedHeight(20)
                         txtfname=QtWidgets.QLineEdit(self.sysConfig['down-init']['fileprefix'])
-                        txtfname.setFixedWidth(200)
-                        txtfname.setFixedHeight(30)
+                        txtfname.setFixedWidth(150)
+                        txtfname.setFixedHeight(20)
 #                        chk_slice=QtGui.QCheckBox("Ignore Slice Chk")
 #                        chk_slice.setFixedHeight(30)
 #                        chk_db=QtGui.QCheckBox("Ignore Database Chk")
@@ -438,6 +547,7 @@ class StartQT(QtWidgets.QMainWindow):
         layout=QtWidgets.QHBoxLayout()
         layout.addWidget(vs_scroll)
         self.main_ui.grp_path.setLayout(layout)
+        self.main_ui.btn_page3.setEnabled(True)
             
     def refresh_page3(self):
         #self.reset_process()
@@ -763,8 +873,8 @@ class StartQT(QtWidgets.QMainWindow):
     def download_selected(self):
         self.reset_internal()
         self.main_ui.btn_page1.setEnabled(True)
-        self.main_ui.btn_page2.setEnabled(True)
-        self.main_ui.btn_page3.setEnabled(True)
+        self.main_ui.btn_page2.setEnabled(False)
+        self.main_ui.btn_page3.setEnabled(False)
         self.main_ui.btn_page4.setEnabled(False)
         self.main_ui.btn_page5.setEnabled(True)
         self.main_ui.btn_page6.setEnabled(False)
@@ -779,7 +889,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_page2.setEnabled(False)
         self.main_ui.btn_page3.setEnabled(False)
         self.main_ui.btn_page4.setEnabled(True)
-        self.main_ui.btn_page5.setEnabled(False)
+        self.main_ui.btn_page5.setEnabled(True)
         self.main_ui.btn_page6.setEnabled(False)
         self.createScanQualityCheckBoxes()
         self.page1_clicked()

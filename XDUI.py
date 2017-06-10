@@ -18,11 +18,19 @@ import getpass
 import sip
 from platform import system
 from string import whitespace
+import subprocess
+from XRest import XnatRest
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
 #Pre-set ComboBox translations for Path Creation screen
 CMBPATH=['PROJ','SUBJ','SESS','SCAN']
+
+if system()=='Windows':
+    CUST_PROG_CONV='<Custom Program> -LocOfDcmFiles %Output-Dir%\* -CustomFileExtension %File-Name% -CustomFileDOwnloadLocation %Output-Dir%\Custom'
+else:
+    CUST_PROG_CONV='<Custom Program> -LocOfDcmFiles %Output-Dir%/* -CustomFileExtension %File-Name% -CustomFileDOwnloadLocation %Output-Dir%/Custom'
+
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -64,11 +72,12 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.edt_pwd.returnPressed.connect(self.sign_in)
         self.main_ui.edt_username.returnPressed.connect(self.sign_in)
         
-        self.main_ui.rb_sel_download.clicked.connect(self.download_selected)
-        self.main_ui.rb_sel_upload.clicked.connect(self.upload_selected)
+        self.main_ui.rb_sel_download.toggled.connect(self.download_selected)
+        self.main_ui.rb_sel_upload.toggled.connect(self.upload_selected)
         
         self.main_ui.cmb_project.currentIndexChanged.connect(self.index_proj_changed)
-
+        
+        
        #Class Variables
         self.sysConfig=None
         self.userConfig=None
@@ -111,6 +120,18 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_path_all_scans.setChecked(True)
         self.main_ui.chk_path_all_scans.clicked.connect(self.send2allScanChkBoxes)
         self.main_ui.cmb_path_txt.addItems(CMBPATH)
+        
+        
+        #Download Options Radio Button Signals
+        #QtCore.QObject.connect(self.main_ui.rb_afni, QtCore.SIGNAL("toggled(bool)"), self.afni_clicked)
+        self.main_ui.rb_afni.toggled.connect(self.afni_clicked)
+        #QtCore.QObject.connect(self.main_ui.rb_nifti, QtCore.SIGNAL("toggled(bool)"), self.nifti_clicked)
+        self.main_ui.rb_nifti.toggled.connect(self.nifti_clicked)
+        #QtCore.QObject.connect(self.main_ui.rb_custom, QtCore.SIGNAL("toggled(bool)"), self.custom_clicked)
+        self.main_ui.rb_custom.toggled.connect(self.custom_clicked)
+        #QtCore.QObject.connect(self.main_ui.rb_dcm, QtCore.SIGNAL("toggled(bool)"), self.dcm_clicked)
+        self.main_ui.rb_dcm.toggled.connect(self.dcm_clicked)
+        self.main_ui.btn_refresh_cmd.clicked.connect(self.download_cmd_refresh)
         
         #Variables with data
         self.curr_proj=None #Currently selected Xnat Project
@@ -156,6 +177,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.grp_what.setEnabled(False)
         self.main_ui.grp_download_method.setEnabled(False)
 
+        
         self.page1_clicked() #Go to the first page.
     
     def send2path_edt(self):
@@ -165,12 +187,7 @@ class StartQT(QtWidgets.QMainWindow):
                 #Getting the GroupBoxes for each selected scan types
                 if scan_grp.isChecked():
                     grp_layout=scan_grp.layout()
-                
-    #            #Getting hbox1 layout that has checkboxes
-    #            chk_layout=grp_layout.itemAt(0).layout()
-    #            print chk_layout.itemAt(0).widget().text()
-    #            print chk_layout.itemAt(1).widget().text()
-                
+                               
                 #Getting hbox2 layout that has the textboxes
                     txt_layout=grp_layout.itemAt(1).layout()
                     #txt_layout.itemAt(0).widget().setText(txt_layout.itemAt(0).widget().text()+self.main_ui.edt_path_txt.text())
@@ -183,12 +200,7 @@ class StartQT(QtWidgets.QMainWindow):
                 #Getting the GroupBoxes for each selected scan types
                 if scan_grp.isChecked():
                     grp_layout=scan_grp.layout()
-                
-    #            #Getting hbox1 layout that has checkboxes
-    #            chk_layout=grp_layout.itemAt(0).layout()
-    #            print chk_layout.itemAt(0).widget().text()
-    #            print chk_layout.itemAt(1).widget().text()
-                
+                               
                 #Getting hbox2 layout that has the textboxes
                     txt_layout=grp_layout.itemAt(1).layout()
                     txt_layout.itemAt(1).widget().setText(txt_layout.itemAt(1).widget().text()+self.main_ui.edt_path_txt.text())
@@ -237,7 +249,7 @@ class StartQT(QtWidgets.QMainWindow):
 
 
     def reset_path_selected(self):
-# GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
+        # GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
         for scan_grp in self.main_ui.grp_allScans:
             #Getting the GroupBoxes for each selected scan types
             if scan_grp.isChecked():
@@ -249,17 +261,12 @@ class StartQT(QtWidgets.QMainWindow):
                 txt_layout.itemAt(1).widget().setText("")
     
     def reset_path_all(self):
-# GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
+        # GETS EVERYTHING FROM THE DYNAMIC GroupBoxes 
         for scan_grp in self.main_ui.grp_allScans:
             #Getting the GroupBoxes for each selected scan types
             #print scan_grp.isChecked()
             grp_layout=scan_grp.layout()
-            
-#            #Getting hbox1 layout that has checkboxes
-#            chk_layout=grp_layout.itemAt(0).layout()
-#            print chk_layout.itemAt(0).widget().text()
-#            print chk_layout.itemAt(1).widget().text()
-            
+                    
             #Getting hbox2 layout that has the textboxes
             txt_layout=grp_layout.itemAt(1).layout()
             txt_layout.itemAt(0).widget().setText("")
@@ -406,6 +413,11 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page4=True
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
+        if not self.main_ui.tree_sessions.isEnabled():
+            if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
+                self.PopupDlg("Please Select if you want do download Scans or Resources")
+            else:
+                self.main_ui.tree_sessions.setEnabled(True)
         if item_sub.checkState(): #Item is Checked
             
             if str(item_sub.text()) not in self.tree_all:
@@ -636,7 +648,7 @@ class StartQT(QtWidgets.QMainWindow):
                     self.main_ui.lst_sel_log.addItem(itm_src)
                     self.main_ui.lst_dest_pick.addItem(itm_dest)
                     self.main_ui.lst_filename.addItem(itm_fname)
-                    
+                    self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
                     self.download_cmd_refresh()
                     
     def download_cmd_refresh(self):
@@ -649,7 +661,68 @@ class StartQT(QtWidgets.QMainWindow):
                     itm_cmd.setFlags(itm_cmd.flags() | QtCore.Qt.ItemIsEditable)
                     self.main_ui.lst_cmd.addItem(itm_cmd)
 
-            
+    def afni_clicked(self):
+        #Afni doesn't run on Windows
+        self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
+        self.d_format=2
+        if self.prog_exists('Dimon'):
+            self.main_ui.edt_down_cmd.setText('Dimon -infile_pattern %Output-Dir%/* -dicom_org -gert_create_dataset -gert_to3d_prefix %File-Name% -gert_outdir %Output-Dir%')
+            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to Dimon")
+            self.main_ui.edt_down_status.setStyleSheet("color: rgb(128,128,0);")
+        else:
+            self.main_ui.edt_down_cmd.setText(CUST_PROG_CONV)
+            self.main_ui.edt_down_status.setText("Status: Dimon not found. Please Enter proper conversion command")
+            self.main_ui.edt_down_status.setStyleSheet("color: rgb(255,0,0);")
+        self.download_cmd_refresh()
+    
+    def nifti_clicked(self):
+        #Afni doesn't run on Windows
+        self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
+        self.d_format=3
+        if self.prog_exists('Dimon'):
+            self.main_ui.edt_down_cmd.setText('Dimon -infile_pattern %Output-Dir%/* -dicom_org -gert_create_dataset -gert_write_as_nifti -gert_to3d_prefix %File-Name% -gert_outdir %Output-Dir%')
+            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to Dimon")
+            self.main_ui.edt_down_status.setStyleSheet("color: rgb(128,128,0);")
+        else:
+            self.main_ui.edt_down_cmd.setText(CUST_PROG_CONV)
+            self.main_ui.edt_down_status.setText("Status: Dimon not found. Please Enter proper conversion command")
+            self.main_ui.edt_down_status.setStyleSheet("color: rgb(255,0,0);")            
+        self.download_cmd_refresh()
+        
+    
+    def custom_clicked(self):
+        self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
+        self.d_format=4
+        if self.prog_exists('dcm2nii'):
+            if system()=='Windows':
+                self.main_ui.edt_down_cmd.setText('dcm2nii -e N -f Y -d N -p N -v N -g N %Output-Dir%\%File-Name%')
+            else:
+                self.main_ui.edt_down_cmd.setText('dcm2nii -e N -f Y -d N -p N -v N -g N %Output-Dir%/%File-Name%')
+            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to dcm2nii are correct")
+            self.main_ui.edt_down_status.setStyleSheet("color: rgb(255,140,0);")
+        else:
+            self.main_ui.edt_down_cmd.setText(CUST_PROG_CONV)
+            self.main_ui.edt_down_status.setText("Status: Please Enter proper conversion command")
+            self.main_ui.edt_down_status.setStyleSheet("color: rgb(255,0,0);")
+        self.download_cmd_refresh()
+    
+    def dcm_clicked(self):
+        self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
+        self.d_format=1
+        self.main_ui.edt_down_status.setText("Status: Ready. No Conversion needed")
+        self.main_ui.edt_down_cmd.setText(os.path.join('%Output-Dir%','%File-Name%-######'))
+        self.main_ui.edt_down_status.setStyleSheet("color: rgb(107,142,35);")
+        self.download_cmd_refresh()
+                    
+    def prog_exists(self,prog_name): #Checking if the program exists in the environment
+        try:
+            devnull = open(os.devnull)
+            subprocess.Popen([prog_name],stdout=devnull,stderr=devnull).communicate()
+        except OSError as e:
+            if e.errno == os.errno.ENOENT:
+                return False
+        return True
+
     def refresh_page4(self):
         pass
             
@@ -710,7 +783,7 @@ class StartQT(QtWidgets.QMainWindow):
             self.PopupDlg("Please Enter all information !!")
         else:
             print("Success")
-            self.XConn=XnatConnection(host,uname,passwd,False)
+            self.XConn=XnatRest(host,uname,passwd,False)
             self.projects=self.XConn.getProjects()
             if self.projects==0:
                 self.PopupDlg("Something doesn't seem right. Check your Username/Password/Hostname")
@@ -761,7 +834,7 @@ class StartQT(QtWidgets.QMainWindow):
             
     def populate_subjects(self):
         if self.main_ui.cmb_project.currentIndex()!=0:
-            print("Populating: "+str(self.curr_proj))
+            #print("Populating: "+str(self.curr_proj))
             self.li_subs.extend(self.XConn.getSubjects(self.curr_proj))
             # Populate the Subject List
             for sub in self.li_subs:
@@ -779,7 +852,7 @@ class StartQT(QtWidgets.QMainWindow):
         If the index of the combobox of available projects changes.
         """
         if self.main_ui.cmb_project.currentIndex()!=0:
-            print(self.main_ui.cmb_project.currentText())
+            #print(self.main_ui.cmb_project.currentText())
             self.main_ui.grp_what.setEnabled(True)
             self.curr_proj=self.main_ui.cmb_project.currentText()
             self.reset_internal()
@@ -834,14 +907,17 @@ class StartQT(QtWidgets.QMainWindow):
         print("Resetting Process")
 
     def reset_internal(self):
+        if self.main_ui.rb_sel_download.isChecked():
+            self.prep_download()
+        elif self.main_ui.rb_sel_upload.isChecked():
+            self.prep_upload()
+        if not self.main_ui.rb_sel_download.isChecked() and not self.main_ui.rb_sel_upload.isChecked():
+            self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
+        
         self.reset_process()
-        self.main_ui.btn_page5.setEnabled(False)
         self.reset_upload()
-        self.main_ui.btn_page4.setEnabled(False)
         self.reset_download()
-        self.main_ui.btn_page3.setEnabled(False)
         self.reset_destination()
-        self.main_ui.btn_page2.setEnabled(False)
         self.reset_source()
         self.reset_variables()
         
@@ -896,30 +972,52 @@ class StartQT(QtWidgets.QMainWindow):
         
     def download_selected(self):
         self.reset_internal()
-        self.main_ui.btn_page1.setEnabled(True)
-        self.main_ui.btn_page2.setEnabled(False)
-        self.main_ui.btn_page3.setEnabled(False)
-        self.main_ui.btn_page4.setEnabled(False)
-        self.main_ui.btn_page5.setEnabled(True)
-        self.main_ui.btn_page6.setEnabled(False)
-        self.main_ui.grp_download_method.setEnabled(True)
+        #self.prep_download() #reset_internal takes care of this
         self.createScanQualityCheckBoxes()
         self.page1_clicked()
         self.populate_subjects()
         self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:;"))
         
+    def prep_download(self):
+        self.main_ui.tree_sessions.setEnabled(False)
+        self.main_ui.btn_page1.setEnabled(True)
+        self.main_ui.btn_page1.setVisible(True)
+        self.main_ui.btn_page2.setEnabled(False)
+        self.main_ui.btn_page2.setVisible(True)
+        self.main_ui.btn_page3.setEnabled(False)
+        self.main_ui.btn_page3.setVisible(True)
+        self.main_ui.btn_page4.setEnabled(False)
+        self.main_ui.btn_page4.setVisible(False)
+        self.main_ui.btn_page5.setEnabled(True)
+        self.main_ui.btn_page5.setVisible(True)
+        self.main_ui.btn_page6.setEnabled(False)
+        self.main_ui.btn_page6.setVisible(False)
+        self.main_ui.grp_sess_select.setVisible(True)
+        self.main_ui.grp_download_method.setEnabled(True)
+        
     def upload_selected(self):
         self.reset_internal()
-        self.main_ui.btn_page1.setEnabled(True)
-        self.main_ui.btn_page2.setEnabled(False)
-        self.main_ui.btn_page3.setEnabled(False)
-        self.main_ui.btn_page4.setEnabled(True)
-        self.main_ui.btn_page5.setEnabled(True)
-        self.main_ui.btn_page6.setEnabled(False)
+        #self.prep_upload() #reset_internal takes care of this
         self.createScanQualityCheckBoxes()
         self.page1_clicked()
         self.populate_subjects()
         self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:;"))
+        
+    def prep_upload(self):
+        self.main_ui.tree_sessions.setEnabled(True)
+        self.main_ui.btn_page1.setEnabled(True)
+        self.main_ui.btn_page1.setVisible(True)
+        self.main_ui.btn_page2.setEnabled(False)
+        self.main_ui.btn_page2.setVisible(False)
+        self.main_ui.btn_page3.setEnabled(False)
+        self.main_ui.btn_page3.setVisible(False)
+        self.main_ui.btn_page4.setEnabled(True)
+        self.main_ui.btn_page4.setVisible(True)
+        self.main_ui.btn_page5.setEnabled(False)
+        self.main_ui.btn_page5.setVisible(False)
+        self.main_ui.btn_page6.setEnabled(False)
+        self.main_ui.btn_page6.setVisible(False)
+        self.main_ui.grp_sess_select.setVisible(False)
         
     def loadConfig(self):
         """
@@ -978,164 +1076,6 @@ class StartQT(QtWidgets.QMainWindow):
 #                pass
             event.accept()
 
-class XnatConnection:
-    def __init__(self,host,user,passwd,verify=True):
-        # Set up session
-        if host[-1]=='/':
-            self.host=host[:-1]
-        else:
-            self.host=host
-        self.user=user
-        self.passwd=passwd
-        self.verify=verify
-        #self.xnat_session=None
-        self.intf = requests.Session()
-        self.intf.verify = False
-        self.intf.auth = (self.user,self.passwd)
-        
-    def refresh(self):
-        """
-        Refreshes http connection to url
-        """
-        pass
-
-    def getProjects(self):
-        projects=self.get()
-        proj_ids=[]
-        for proj in projects:
-            proj_ids.append(proj['ID'])
-        return proj_ids
-        
-    def getSubjects(self,proj):
-        """
-       {'ID': 'Cerebra_S02566',
-        'URI': '/data/subjects/Cerebra_S02566',
-        'insert_date': '2016-07-27 13:27:23.636',
-        'insert_user': 'moynihanbt',
-        'label': '184612',
-        'project': '000'},
-        """
-        return self.get(proj)
-#        subjects =self.get(proj)
-#        ret_subs=[]
-#        for sub in subjects:
-#            ret_subs.append({'ID':sub['ID'],'label':sub['label']})
-#        return ret_subs
-    def getExperiments(self,proj,subj):
-        """
-        {'ID': 'Cerebra_E03214',
-            'URI': '/data/experiments/Cerebra_E03214',
-            'date': '2017-02-23',
-            'insert_date': '2017-03-02 09:57:35.695',
-            'label': '185574-1',
-            'project': '457',
-            'xnat:subjectassessordata/id': 'Cerebra_E03214',
-            'xsiType': 'xnat:mrSessionData'}
-        """
-        return self.get(proj,subj)
-    def getScans(self,proj,subj,exp):
-        """
-        {'ID': '1',
-          'URI': '/data/experiments/Cerebra_E03214/scans/1',
-          'note': '',
-          'quality': 'unknown',
-          'series_description': 'localizer',
-          'type': 'localizer',
-          'xnat_imagescandata_id': '45077',
-          'xsiType': 'xnat:mrScanData'},
-        """
-        return self.get(proj,subj,exp)
-    def getQualityLabels(self):
-        """
-        {'ResultSet': {'Result': [{'contents': 'unknown,usable,questionable,unusable\n',
-            'create_date': '2014-03-10 14:00:36.086',
-            'path': 'labels',
-            'project': '',
-            'reason': '',
-            'status': 'enabled',
-            'tool': 'scan-quality',
-            'unversioned': 'true',
-            'user': 'admin',
-            'version': '1'}]}}
-        """
-        url="/REST/config/scan-quality/labels"
-        result=self._get(self.host+url)
-        try:
-            result.json()['ResultSet']['Result']
-        except:
-            return 0
-        
-        labels=result.json()['ResultSet']['Result'][0]['contents']
-        if labels[-1]=='\n':
-            return labels[:-1].split(",")
-        else:
-            return labels.split(",")
-    def get(self,proj=None,subj=None,exp=None,scan=None):
-        """
-        Does a GET request according to the query
-        """
-        tail="?format=json"
-        if proj==None:
-            url="/data/archive/projects"
-            result=self._get(self.host+url+tail)
-            if result==0:
-                return 0
-            else:
-                return result.json()['ResultSet']['Result']
-        elif subj==None:
-            url="/data/archive/projects/"+proj+"/subjects"
-            result=self._get(self.host+url+tail)
-            if result==0:
-                return 0
-            else:
-                return result.json()['ResultSet']['Result']
-        elif exp==None:
-            url="/data/archive/projects/"+proj+"/subjects/"+subj+"/experiments"
-            result=self._get(self.host+url+tail)
-            if result==0:
-                return 0
-            else:
-                return result.json()['ResultSet']['Result']
-        elif scan==None:
-            url="/data/archive/projects/"+proj+"/subjects/"+subj+"/experiments/"+exp+"/scans"
-            result=self._get(self.host+url+tail)
-            if result==0:
-                return 0
-            else:
-                return result.json()['ResultSet']['Result']
-            
-    def _get(self,url):
-        """
-        Does a GET on the url
-        """
-        try:
-            r = self.intf.get(url)
-            r.raise_for_status()
-        except (requests.ConnectionError, requests.exceptions.RequestException) as e:
-            print ("Request Failed")
-            print ("    " + str( e ))
-            print ("    Please Check Username/Password")
-            return 0
-            #sys.exit(1)
-        return r
-
-    def _put(url,**kwargs):
-        """
-        Does a PUT on the url
-        """
-        try:
-            r = intf.get( url, **kwargs )
-            r.raise_for_status()
-        except (requests.ConnectionError, requests.exceptions.RequestException) as e:
-            print ("Request Failed")
-            print ("    " + str( e ))
-            sys.exit(1)
-        return r
-
-    def putFile():
-        queryArgs = {"format":"csv","content":"QC Data","reference":os.path.abspath(os.path.join(dicomdir, f_name))}
-        r = intf.put(host + "/data/experiments/%s/resources/QC/files" % (session), params=queryArgs)
-        r.raise_for_status()
 
 class MyPopupDlg(QtWidgets.QDialog):
     def __init__(self,msg,parent=None):

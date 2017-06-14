@@ -13,13 +13,14 @@ from xnatdui import Ui_XnatDUI
 from PyQt5 import QtCore, QtGui, QtWidgets
 import yaml
 import errno
-import requests
+#import requests
 import getpass
 import sip
 from platform import system
 from string import whitespace
 import subprocess
 from XRest import XnatRest
+import operator
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -102,11 +103,34 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_quality_4.clicked.connect(self.scan_quality_checked)
         self.main_ui.chk_quality_5.clicked.connect(self.scan_quality_checked)
         self.main_ui.chk_quality_6.clicked.connect(self.scan_quality_checked)
+
+        self.resource_checkBoxes=[self.main_ui.chk_res_1,self.main_ui.chk_res_2,self.main_ui.chk_res_3,self.main_ui.chk_res_4,self.main_ui.chk_res_5]
+        self.main_ui.chk_res_1.clicked.connect(self.res_type_checked)
+        self.main_ui.chk_res_2.clicked.connect(self.res_type_checked)
+        self.main_ui.chk_res_3.clicked.connect(self.res_type_checked)
+        self.main_ui.chk_res_4.clicked.connect(self.res_type_checked)
+        self.main_ui.chk_res_5.clicked.connect(self.res_type_checked)
         
+        
+        
+        #Radio button Selection flags
+        self.fl_subjects_selection=None # 0=Sessions, 1=Resources
+        self.fl_sessions_selection=None # 0=Scans, 1=Resources
+        
+        self.main_ui.lst_subjects.setEnabled(False)
+        self.main_ui.tree_sessions.setEnabled(False)
+        self.main_ui.tree_scans.setEnabled(False)
         #Connections to Subjects/Sessions/Scans List/Trees
         self.main_ui.lst_subjects.itemChanged.connect(self.click_sub)
         self.main_ui.tree_sessions.itemClicked.connect(self.handle_sess)
         self.main_ui.tree_scans.itemClicked.connect(self.handle_scan)
+        
+        #Radio Button Connections
+        self.main_ui.rb_subj_res.toggled.connect(self.subj_res_rb_selected)
+        self.main_ui.rb_subj_sess.toggled.connect(self.subj_sess_rb_selected)
+        self.main_ui.rb_sess_scans.toggled.connect(self.sess_scan_rb_selected)
+        self.main_ui.rb_sess_res.toggled.connect(self.sess_res_rb_selected)
+        
         #Hide the root elements on the trees
         self.main_ui.tree_sessions.header().hide()
         self.main_ui.tree_scans.header().hide()
@@ -179,6 +203,11 @@ class StartQT(QtWidgets.QMainWindow):
 
         
         self.page1_clicked() #Go to the first page.
+        #self.testTable()
+    
+
+        
+    
     
     def send2path_edt(self):
         if self.main_ui.rb_send_path.isChecked():
@@ -276,6 +305,11 @@ class StartQT(QtWidgets.QMainWindow):
     def handle_scan(self,item,column):
         #===========TODO==========
         #Handle the event : when all scans unchecked - disable the 'Download Tab' (btn_page2)
+        self.fl_refresh_page2=True
+        self.fl_refresh_page3=True
+        self.fl_refresh_page4=True
+        self.fl_refresh_page5=True
+        self.fl_refresh_page6=True
         self.main_ui.btn_page2.setEnabled(True)
         self.main_ui.tree_sessions.setEnabled(False)
         self.main_ui.lst_subjects.setEnabled(False)
@@ -290,7 +324,6 @@ class StartQT(QtWidgets.QMainWindow):
                 #Pop from dict[0] and put it in dict[1] . 0=Unchecked , 1=Checked
                 #self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1]={x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys}
                 self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys})
-
         elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
             for child in range(item.childCount()):
                 sess_det=self.lookup_session(item.child(child).text(0))
@@ -304,8 +337,11 @@ class StartQT(QtWidgets.QMainWindow):
                 #self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0]={x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].pop(x, None) for x in del_keys}
                 self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].pop(x, None) for x in del_keys})
 
-        else:
+        else: #Will not execute
             pass #QtCore.Qt.PartiallyChekced
+        
+
+                    
     
     def handle_sess(self, item, column):
         self.fl_refresh_page2=True
@@ -317,7 +353,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.tree_sessions.blockSignals(True)
         if item.checkState(column) == QtCore.Qt.Checked:  #Checked
-            print (item.text(0)+ " Checked")
+            #print (item.text(0)+ " Checked")
             
             if item.childCount()==0:
                 sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
@@ -328,7 +364,7 @@ class StartQT(QtWidgets.QMainWindow):
                     self.handle_sess_Chk(sess_det[0],item.child(child).text(0))
                     
         elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
-            print (item.text(0)+" Unchecked")
+            #print (item.text(0)+" Unchecked")
             if item.childCount()==0:
                 sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
                 self.handle_sess_UnChk(sess_det[0],item.text(0))
@@ -343,68 +379,125 @@ class StartQT(QtWidgets.QMainWindow):
         """
         When a session is marked Checked
         """
-        print("Session Checked:"+sess)
+        try:
+            self.dict_checked_all[str(subj)][str(sess)][1][0].clear() #Clearing UnSelected
+        except NameError:
+            pass
+        try:
+            self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
+        except NameError:
+            pass
         if 'scans' not in self.tree_all[str(subj)][str(sess)]:
             tmp_sess_list=self.XConn.getScans(self.curr_proj,subj,sess)
             #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
             self.tree_all[str(subj)][str(sess)]['scans']={}
             for scan in tmp_sess_list:
                 self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
-#                if self.main_ui.chk_scan_usable.isChecked() and scan['scan_quality']=='usable': #Getting only usable scans
-#                    self.tree_all[str(subj)][str(sess)]['scans'][scan['scan_id']]={k:v for k,v in scan.items() if k in ['scan_quality','scan_frames','scan_type']} #Getting only select things from the scan dict
-#                elif not self.main_ui.chk_scan_usable.isChecked() :   #Getting all scans
-#                    self.tree_all[str(subj)][str(sess)]['scans'][scan['scan_id']]={k:v for k,v in scan.items() if k in ['scan_quality','scan_frames','scan_type']} #Getting only select things from the scan dict
-                    
-#        else :
-#            pass
+                
         for s_id,s_det in self.tree_all[str(subj)][str(sess)]['scans'].items():
-            self.add_to_scan_tree(subj, sess,s_det['type'])
-            # Adding to dict_checked_all
-            self.dict_checked_all[str(subj)][str(sess)][1][0][s_id]=s_det['type']
+            if s_det['quality'] in self.getCheckedScanQualityLabels(): #Add to tree only if needed
+                self.add_to_scan_tree(subj, sess,s_id,s_det['type'])
+                # Adding to dict_checked_all
+                self.dict_checked_all[str(subj)][str(sess)][1][0][s_id]=s_det['type']
 
     def handle_sess_UnChk(self,subj,sess):
         """
         When a session is marked UnChecked
         """
-        print("Session UChecked:"+sess)
+        
         for k_scan,v_scan in self.dict_checked_all[str(subj)][str(sess)][1][0].items():
-            self.remove_frm_scan_tree(str(subj),str(sess),v_scan)
+            self.remove_frm_scan_tree(str(subj),str(sess),k_scan,v_scan)
         for k_scan,v_scan in self.dict_checked_all[str(subj)][str(sess)][1][1].items():
-            self.remove_frm_scan_tree(str(subj),str(sess),v_scan)
+            self.remove_frm_scan_tree(str(subj),str(sess),k_scan,v_scan)
         self.dict_checked_all[str(subj)][str(sess)][1][0].clear() #Clearing UnSelected
         self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
 
-    def add_to_scan_tree(self,subj,sess,scan):  # args are Non-Xnat terms/(labels not IDs)
+    def add_to_scan_tree(self,subj,sess,scan_id,scan_type):  # args are Non-Xnat terms/(labels not IDs)
         root=self.main_ui.tree_scans.invisibleRootItem()
         flag=0
         for index in range(root.childCount()):
-            if root.child(index).text(0)==scan:
+            if root.child(index).text(0)==scan_type:
                 new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
                 new_kid.setText(0,sess)
-                new_kid.setStatusTip(0,subj)
+                new_kid.setStatusTip(0,scan_id)
                 flag=1
                 break
         if flag==0:
             parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_scans)
-            parent.setText(0,scan)
+            parent.setText(0,scan_type)
             parent.setFlags(parent.flags() | QtCore.Qt.ItemIsUserCheckable)
             parent.setCheckState(0,QtCore.Qt.Unchecked)
             child = QtWidgets.QTreeWidgetItem(parent)
             child.setText(0,sess)
-            child.setStatusTip(0,subj)
+            child.setStatusTip(0,scan_id)
 
-    def remove_frm_scan_tree(self,subj,sess,scan):  # args are Non-Xnat terms/(labels not IDs)
+    def remove_frm_scan_tree(self,subj,sess,scan_id,scan_type):  # args are Non-Xnat terms/(labels not IDs)
         root=self.main_ui.tree_scans.invisibleRootItem()
         
         for index in range(root.childCount()):
-            if root.child(index).text(0)==scan:
+            if root.child(index).text(0)==scan_type:
                 for ind2 in range(root.child(index).childCount()):
-                    if root.child(index).child(ind2).text(0)==sess:
+                    if root.child(index).child(ind2).text(0)==sess and root.child(index).child(ind2).statusTip(0)==scan_id:
                         root.child(index).removeChild(root.child(index).child(ind2))
                         if root.child(index).childCount()==0:
                             root.removeChild(root.child(index))
                         break
                 break
+
+    def sess_scan_rb_selected(self):
+        self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:;"))
+        if self.main_ui.rb_sess_scans.isChecked():
+            self.main_ui.grp_scan_quality.setVisible(True)
+            self.main_ui.lbl_scan.setVisible(True)
+            if self.fl_sessions_selection==None: #Fresh start
+                self.fl_sessions_selection=0
+                self.main_ui.lst_subjects.setEnabled(True)
+                self.main_ui.tree_scans.setEnabled(True)
+            elif self.fl_sessions_selection==1: #Switching from 1 to 0
+                self.fl_sessions_selection=0       
+    
+    def sess_res_rb_selected(self):
+        self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:;"))
+        if self.main_ui.rb_sess_res.isChecked():
+            self.main_ui.grp_scan_quality.setVisible(False)
+            self.main_ui.lbl_scan.setVisible(False)
+            if self.fl_sessions_selection==None: #Fresh start
+                self.fl_sessions_selection=1
+                self.main_ui.lst_subjects.setEnabled(True)
+            elif self.fl_sessions_selection==0: #Switching from 0 to 1
+                self.fl_sessions_selection=1       
+
+    def subj_sess_rb_selected(self):
+        self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:;"))
+        if not self.main_ui.lst_subjects.isEnabled() and (self.main_ui.rb_sess_scans.isChecked() or self.main_ui.rb_sess_res.isChecked()):
+            self.main_ui.lst_subjects.setEnabled(True)
+        else:
+            self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
+        if self.main_ui.rb_subj_sess.isChecked():
+            print("Sessions Selected")
+            self.main_ui.grp_scan_quality.setVisible(True)
+            self.main_ui.lbl_scan.setVisible(True)
+            self.main_ui.vf_sessions.setVisible(True)
+            if self.fl_subjects_selection==None: #Fresh start
+                self.fl_subjects_selection=0
+            elif self.fl_subjects_selection==1: #Switching from 1 to 0
+                self.fl_subjects_selection=0
+
+    def subj_res_rb_selected(self):
+        self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:;"))
+        if not self.main_ui.lst_subjects.isEnabled() and (self.main_ui.rb_sess_scans.isChecked() or self.main_ui.rb_sess_res.isChecked()):
+            self.main_ui.lst_subjects.setEnabled(True)
+        else:
+            self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
+        if self.main_ui.rb_subj_res.isChecked():
+            print("Resources Selected")
+            self.main_ui.grp_scan_quality.setVisible(False)
+            self.main_ui.lbl_scan.setVisible(False)
+            self.main_ui.vf_sessions.setVisible(False)
+            if self.fl_subjects_selection==None: #Fresh start
+                self.fl_subjects_selection=1                
+            elif self.fl_subjects_selection==0: #Switching from 0 to 1
+                self.fl_subjects_selection=1
 
 
     def click_sub(self,item_sub):
@@ -413,68 +506,80 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page4=True
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
-        if not self.main_ui.tree_sessions.isEnabled():
-            if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
-                self.PopupDlg("Please Select if you want do download Scans or Resources")
+        if self.fl_subjects_selection==1: #If "Resources" is selected
+            #For Resources
+            if item_sub.checkState(): #Item is Checked - checkState is True
+                pass
             else:
-                self.main_ui.tree_sessions.setEnabled(True)
-        if item_sub.checkState(): #Item is Checked
-            
-            if str(item_sub.text()) not in self.tree_all:
-                tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
-                #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
-                self.tree_all[str(item_sub.text())]={}
+                pass
+        elif self.fl_subjects_selection==0: #If "Sessions" is selected
+            #For Sessions
+            if not self.main_ui.tree_sessions.isEnabled():
+                if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
+                    self.PopupDlg("Please Select if you want do download Scans or Resources")
+                else:
+                    self.main_ui.tree_sessions.setEnabled(True)
+            if item_sub.checkState(): #Item is Checked - checkState is True
                 
-                for exp in tmp_exp_list: 
-                    if exp['xsiType']=='xnat:mrSessionData': #Getting experiments only of the type mrSessionData
-                        self.tree_all[str(item_sub.text())][exp['label']]={}
-                        self.tree_all[str(item_sub.text())][exp['label']]['exp']=exp['ID'] #Keeping only the ID  . No use for other fields for now.
-                        self.tree_all[str(item_sub.text())][exp['label']]['strip']=self.strip_sub_id(str(item_sub.text()),exp['label'])
+                if str(item_sub.text()) not in self.tree_all:
+                    tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
+                    #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
+                    self.tree_all[str(item_sub.text())]={}
+                    
+                    for exp in tmp_exp_list: 
+                        if exp['xsiType']=='xnat:mrSessionData': #Getting experiments only of the type mrSessionData
+                            self.tree_all[str(item_sub.text())][exp['label']]={}
+                            self.tree_all[str(item_sub.text())][exp['label']]['exp']=exp['ID'] #Keeping only the ID  . No use for other fields for now.
+                            self.tree_all[str(item_sub.text())][exp['label']]['strip']=self.strip_sub_id(str(item_sub.text()),exp['label'])
+                
+                self.dict_checked_all[str(item_sub.text())]={}
+                for sess in self.tree_all[str(item_sub.text())]:                
+                    #self.dict_checked_all[str(item_sub.text())][sess]=[self.strip_sub_id(str(item_sub.text()),sess),{}] #Using the Processor
+                    self.dict_checked_all[str(item_sub.text())][sess]=[self.tree_all[str(item_sub.text())][sess]['strip'],{0: {}, 1: {}}] # 0= Not selected, 1=Selected scans
+    
+                root=self.main_ui.tree_sessions.invisibleRootItem()
+    
+                for sess in self.dict_checked_all[str(item_sub.text())]:
+                    flag=0
+                    for index in range(root.childCount()):
+                        if root.child(index).text(0)==self.dict_checked_all[str(item_sub.text())][sess][0]:
+                            new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
+                            new_kid.setFlags(new_kid.flags() | QtCore.Qt.ItemIsUserCheckable)
+                            new_kid.setText(0,sess)
+                            new_kid.setCheckState(0,QtCore.Qt.Unchecked)
+                            flag=1
+                            break
+                    if flag==0:
+                        parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_sessions)
+                        parent.setText(0,self.dict_checked_all[str(item_sub.text())][sess][0])
+                        parent.setFlags(parent.flags()| QtCore.Qt.ItemIsTristate | QtCore.Qt.ItemIsUserCheckable)
+                        #parent.setCheckState(0,QtCore.Qt.Unchecked)
+                        child = QtWidgets.QTreeWidgetItem(parent)
+                        child.setFlags(child.flags() | QtCore.Qt.ItemIsUserCheckable)
+                        child.setText(0,sess)
+                        child.setCheckState(0,QtCore.Qt.Unchecked)                        
+                                
+            else:
             
-            self.dict_checked_all[str(item_sub.text())]={}
-            for sess in self.tree_all[str(item_sub.text())]:                
-                #self.dict_checked_all[str(item_sub.text())][sess]=[self.strip_sub_id(str(item_sub.text()),sess),{}] #Using the Processor
-                self.dict_checked_all[str(item_sub.text())][sess]=[self.tree_all[str(item_sub.text())][sess]['strip'],{0: {}, 1: {}}] # 0= Not selected, 1=Selected scans
-
-            root=self.main_ui.tree_sessions.invisibleRootItem()
-
-            for sess in self.dict_checked_all[str(item_sub.text())]:
-                flag=0
-                for index in range(root.childCount()):
-                    if root.child(index).text(0)==self.dict_checked_all[str(item_sub.text())][sess][0]:
-                        new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
-                        new_kid.setFlags(new_kid.flags() | QtCore.Qt.ItemIsUserCheckable)
-                        new_kid.setText(0,sess)
-                        new_kid.setCheckState(0,QtCore.Qt.Unchecked)
-                        flag=1
-                        break
-                if flag==0:
-                    parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_sessions)
-                    parent.setText(0,self.dict_checked_all[str(item_sub.text())][sess][0])
-                    parent.setFlags(parent.flags()| QtCore.Qt.ItemIsTristate | QtCore.Qt.ItemIsUserCheckable)
-                    #parent.setCheckState(0,QtCore.Qt.Unchecked)
-                    child = QtWidgets.QTreeWidgetItem(parent)
-                    child.setFlags(child.flags() | QtCore.Qt.ItemIsUserCheckable)
-                    child.setText(0,sess)
-                    child.setCheckState(0,QtCore.Qt.Unchecked)                        
-                            
-        else:
-        
-            sub=self.dict_checked_all.pop(str(item_sub.text()),None)
-            #print sub
-            root=self.main_ui.tree_sessions.invisibleRootItem()
-            for sess in sub:
-                #print sub[sess][0]
-                for index in range(root.childCount()):
-                    if root.child(index).text(0)==sub[sess][0]:
-                        for ind2 in range(root.child(index).childCount()):
-                            if root.child(index).child(ind2).text(0)==sess:
-                                root.child(index).removeChild(root.child(index).child(ind2))
-                                if root.child(index).childCount()==0:
-                                    root.removeChild(root.child(index))
-                                break
-                        break
-
+                sub=self.dict_checked_all.pop(str(item_sub.text()),None)
+                #print sub
+                root=self.main_ui.tree_sessions.invisibleRootItem()
+                for sess in sub:
+                    #print sub[sess][0]
+                    for index in range(root.childCount()):
+                        if root.child(index).text(0)==sub[sess][0]:
+                            for ind2 in range(root.child(index).childCount()):
+                                if root.child(index).child(ind2).text(0)==sess:
+                                    root.child(index).removeChild(root.child(index).child(ind2))
+                                    if root.child(index).childCount()==0:
+                                        root.removeChild(root.child(index))
+                                    break
+                            break
+        else: #If none of "Resources" or "Sessions" is selected
+            """
+            This will never run. NEVER. I think.
+            """
+            self.PopupDlg("Select Sessions or Resources")
 
     @memoise
     def lookup_session(self,sess):
@@ -482,7 +587,15 @@ class StartQT(QtWidgets.QMainWindow):
         for k_sub, v_sess in self.dict_checked_all.items():
             for k_sess, v_scans in v_sess.items():
                 if k_sess==sess:
-                    return(k_sub,v_scans)
+                    return(k_sub,v_scans[1])
+        return None
+    
+    @memoise
+    def lookup_scan_quality(self,subj,sess,scan_id):
+        #print(self.tree_all[subj][sess]['scans'])
+        for s_id,s_det in self.tree_all[subj][sess]['scans'].items():
+            if s_id==scan_id:
+                return s_det['quality']
         return None
             
     def refresh_page1(self):
@@ -496,6 +609,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page4=True
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
+        
         self.populate_subjects()
             
             
@@ -727,8 +841,28 @@ class StartQT(QtWidgets.QMainWindow):
         pass
             
     def refresh_page5(self):
-        pass
-            
+        # the solvent data ...
+        header = ['Solvent Name', ' BP (deg C)', ' MP (deg C)', ' Density (g/ml)']
+        # use numbers for numeric data to sort properly
+        data_list = [
+        ('ACETIC ACID', 117.9, 16.7, 1.049),
+        ('ACETIC ANHYDRIDE', 140.1, -73.1, 1.087),
+        ('ACETONE', 56.3, -94.7, 0.791),
+        ('ACETONITRILE', 81.6, -43.8, 0.786),
+        ('ANISOLE', 154.2, -37.0, 0.995),
+        ('BENZYL ALCOHOL', 205.4, -15.3, 1.045),
+        ('BENZYL BENZOATE', 323.5, 19.4, 1.112),
+        ('BUTYL ALCOHOL NORMAL', 117.7, -88.6, 0.81),
+        ('BUTYL ALCOHOL SEC', 99.6, -114.7, 0.805),
+        ('BUTYL ALCOHOL TERTIARY', 82.2, 25.5, 0.786),
+        ('CHLOROBENZENE', 131.7, -45.6, 1.111),
+        ('CYCLOHEXANE', 80.7, 6.6, 0.779)]
+        
+        
+        self.main_ui.tableView.setModel(MyTableModel(self,data_list,header))
+        self.main_ui.tableView.setSortingEnabled(True)
+
+    
     def refresh_page6(self):
         self.PopupDlg("This area is under Development ")
         
@@ -803,10 +937,67 @@ class StartQT(QtWidgets.QMainWindow):
         """
         When any of the scan_quality checkboxes are checked/Unchecked
         """
-        i=0
-        for scanQuality in self.scan_quality_labels:
-            #Do somthing to self.scan_quality_checkBoxes[i]
-            i+=1
+#        root=self.main_ui.tree_scans.invisibleRootItem()
+#        qlabels=self.getCheckedScanQualityLabels()
+#        for index in range(root.childCount()):
+#            for ind2 in range(root.child(index).childCount()):
+#                subj,scans=self.lookup_session(root.child(index).child(ind2).text(0))
+#                if self.lookup_scan_quality(subj,root.child(index).child(ind2).text(0),root.child(index).child(ind2).statusTip(0)) in qlabels:
+#                    print("Need this quality")
+#                hello
+        #Cleanup prior data
+        self.main_ui.tree_scans.clear()
+        
+        self.main_ui.tree_sessions.blockSignals(True)
+        
+        
+        root=self.main_ui.tree_sessions.invisibleRootItem()
+        for index in range(root.childCount()):
+            item=root.child(index)
+            if item.checkState(0) == QtCore.Qt.Checked:  #Checked
+                
+                if item.childCount()==0:
+                    sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
+                    self.handle_sess_Chk(sess_det[0],item.text(0))
+                else:
+                    for child in range(item.childCount()):
+                        sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
+                        self.handle_sess_Chk(sess_det[0],item.child(child).text(0))
+                        
+#            elif item.checkState(0) == QtCore.Qt.Unchecked:  #Unchecked
+#                
+#                if item.childCount()==0:
+#                    sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
+#                    self.handle_sess_UnChk(sess_det[0],item.text(0))
+#                else:
+#                    for child in range(item.childCount()):
+#                        sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
+#                        self.handle_sess_UnChk(sess_det[0],item.child(child).text(0))
+        self.main_ui.tree_sessions.blockSignals(False)
+                
+
+    def getCheckedScanQualityLabels(self):
+        """
+        returns the list of quality labels that are checked.
+        """
+        chkLabels=[]
+        for chkBox in self.scan_quality_checkBoxes:
+            if chkBox.isChecked():
+                chkLabels.append(chkBox.text())
+        return chkLabels
+    
+    def res_type_checked(self):
+        """
+        When any of the resources checkboxes are checked/Unchecked
+        """
+        pass
+
+    def getCheckedResourceLabels(self):
+        """
+        returns the list of quality labels that are checked.
+        """
+        
+        return 0    
 
     def createScanQualityCheckBoxes(self):
         print("Cleaning Scan Quality Labels")
@@ -819,17 +1010,14 @@ class StartQT(QtWidgets.QMainWindow):
             i=0
             for qualityLbl in self.scan_quality_labels:
                 self.scan_quality_checkBoxes[i].setText(qualityLbl)
+                self.scan_quality_checkBoxes[i].setChecked(True)
                 i+=1
             for chkBox in range(i,len(self.scan_quality_checkBoxes)):
+                self.scan_quality_checkBoxes[i].setChecked(False)
                 self.scan_quality_checkBoxes[i].setVisible(False)
                 i+=1
 
-    def getCheckedScanQualityLabels(self):
-        """
-        returns the list of quality labels that are checked.
-        """
-        
-        return 0
+
     
             
     def populate_subjects(self):
@@ -877,7 +1065,10 @@ class StartQT(QtWidgets.QMainWindow):
         self.tree_all.clear()
         self.main_ui.tree_sessions.clear()
         self.main_ui.tree_scans.clear()
-        self.main_ui.lst_subjects.setEnabled(True)
+        if self.fl_subjects_selection and self.fl_sessions_selection:
+            self.main_ui.lst_subjects.setEnabled(True)
+        else:
+            self.main_ui.lst_subjects.setEnabled(False)
         
 
     def reset_destination(self):
@@ -913,6 +1104,7 @@ class StartQT(QtWidgets.QMainWindow):
             self.prep_upload()
         if not self.main_ui.rb_sel_download.isChecked() and not self.main_ui.rb_sel_upload.isChecked():
             self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
+            
         
         self.reset_process()
         self.reset_upload()
@@ -955,13 +1147,19 @@ class StartQT(QtWidgets.QMainWindow):
         self.reset_variables()
         #self.get_projects()
         self.main_ui.tree_sessions.setEnabled(True)
-        self.main_ui.lst_subjects.setEnabled(True)
+        self.main_ui.lst_subjects.setEnabled(False)
         #self.curr_proj=self.main_ui.cmb_project.currentText()
         self.main_ui.rb_sel_upload.setChecked(False)
         self.main_ui.rb_sel_download.setChecked(False)
         self.main_ui.grp_what.setEnabled(False)
         self.refresh_page1=True
-        self.page1_clicked() 
+        for chkbox in self.scan_quality_checkBoxes:
+            if chkbox.isVisible():
+                chkbox.setChecked(True)
+        for chkbox in self.resource_checkBoxes:
+            if chkbox.isVisible():
+                chkbox.setChecked(True)
+        self.page1_clicked()
         self.reset_internal()
     
         
@@ -977,6 +1175,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.page1_clicked()
         self.populate_subjects()
         self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:;"))
+        self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         
     def prep_download(self):
         self.main_ui.tree_sessions.setEnabled(False)
@@ -1002,6 +1201,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.page1_clicked()
         self.populate_subjects()
         self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:;"))
+        self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         
     def prep_upload(self):
         self.main_ui.tree_sessions.setEnabled(True)
@@ -1018,6 +1218,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_page6.setEnabled(False)
         self.main_ui.btn_page6.setVisible(False)
         self.main_ui.grp_sess_select.setVisible(False)
+        
         
     def loadConfig(self):
         """
@@ -1075,6 +1276,35 @@ class StartQT(QtWidgets.QMainWindow):
 #            except:
 #                pass
             event.accept()
+
+class MyTableModel(QtCore.QAbstractTableModel):
+    def __init__(self,parent,mylist,header,*args):
+        QtCore.QAbstractTableModel.__init__(self,parent,*args)
+        self.mylist=mylist
+        self.header=header
+    def rowCount(self,parent):
+        return len(self.mylist)
+    def columnCount(self,parent):
+        return len(self.mylist[0])
+    def data(self,index,role):
+        if not index.isValid():
+            return None
+        elif role !=QtCore.Qt.DisplayRole:
+            return None
+        return self.mylist[index.row()][index.column()]
+    def headerData(self,col,orientation,role):
+        if orientation ==QtCore.Qt.Horizontal and role==QtCore.Qt.DisplayRole:
+            return self.header[col]
+        return None
+    def sort(self,col,order):
+        """
+        Sort table by given column number
+        """
+        self.layoutAboutToBeChanged.emit()
+        self.mylist = sorted(self.mylist,key=operator.itemgetter(col))
+        if order == QtCore.Qt.DescendingOrder:
+            self.mylist.reverse()
+        self.layoutChanged.emit()
 
 
 class MyPopupDlg(QtWidgets.QDialog):

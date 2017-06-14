@@ -25,7 +25,8 @@ class XnatRest:
         """
         Refreshes http connection to url
         """
-        pass
+        self.intf=None
+        self.__init__(self.host,self.user,self.passwd,self.verify)
 
     def getProjects(self):
         projects=self.get()
@@ -134,7 +135,7 @@ class XnatRest:
             
     def getResourcesList(self,proj=None,subj=None,exp=None,scan=None):
         """
-        Does a GET request according to the query
+        Gets a list of resources for the level specified last
         """
         tail="?format=json"
         if proj==None:
@@ -180,6 +181,10 @@ class XnatRest:
         r=XCon._get("https://cerebra.nida.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/scans/3/resources/DICOM/files")
         
         """
+        #resid cannot be None
+        if not resid:
+            return []
+        
         if download: #If true, will download as a zip. This doesn't work yet.
             tail="?format=zip"
         else:        #Else will give a list of files

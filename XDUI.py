@@ -841,23 +841,14 @@ class StartQT(QtWidgets.QMainWindow):
         pass
             
     def refresh_page5(self):
-        # the solvent data ...
-        header = ['Solvent Name', ' BP (deg C)', ' MP (deg C)', ' Density (g/ml)']
-        # use numbers for numeric data to sort properly
-        data_list = [
-        ('ACETIC ACID', 117.9, 16.7, 1.049),
-        ('ACETIC ANHYDRIDE', 140.1, -73.1, 1.087),
-        ('ACETONE', 56.3, -94.7, 0.791),
-        ('ACETONITRILE', 81.6, -43.8, 0.786),
-        ('ANISOLE', 154.2, -37.0, 0.995),
-        ('BENZYL ALCOHOL', 205.4, -15.3, 1.045),
-        ('BENZYL BENZOATE', 323.5, 19.4, 1.112),
-        ('BUTYL ALCOHOL NORMAL', 117.7, -88.6, 0.81),
-        ('BUTYL ALCOHOL SEC', 99.6, -114.7, 0.805),
-        ('BUTYL ALCOHOL TERTIARY', 82.2, 25.5, 0.786),
-        ('CHLOROBENZENE', 131.7, -45.6, 1.111),
-        ('CYCLOHEXANE', 80.7, 6.6, 0.779)]
+
+        header = ['Subject', 'Session', 'ScanID', 'ScanType','Quality']
+        data_list=[]
         
+        for subj,sess_dict in self.dict_checked_all.items():
+            for sess,scan_dict in sess_dict.items():
+                for sc_id,sc_type in scan_dict[1][1].items():
+                    data_list.append((subj,sess,sc_id,sc_type,self.lookup_scan_quality(subj,sess,sc_id)))
         
         self.main_ui.tableView.setModel(MyTableModel(self,data_list,header))
         self.main_ui.tableView.setSortingEnabled(True)

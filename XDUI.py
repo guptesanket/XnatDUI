@@ -21,6 +21,7 @@ from string import whitespace
 import subprocess
 from XRest import XnatRest
 import operator
+from collections import defaultdict
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -111,7 +112,9 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_res_4.clicked.connect(self.res_type_checked)
         self.main_ui.chk_res_5.clicked.connect(self.res_type_checked)
         
-        
+        self.fl_Subj_checked =False
+        self.fl_Sess_checked =False
+        self.fl_Scan_checked =False
         
         #Radio button Selection flags
         self.fl_subjects_selection=None # 0=Sessions, 1=Resources
@@ -156,6 +159,7 @@ class StartQT(QtWidgets.QMainWindow):
         #QtCore.QObject.connect(self.main_ui.rb_dcm, QtCore.SIGNAL("toggled(bool)"), self.dcm_clicked)
         self.main_ui.rb_dcm.toggled.connect(self.dcm_clicked)
         self.main_ui.btn_refresh_cmd.clicked.connect(self.download_cmd_refresh)
+        self.main_ui.btn_download.clicked.connect(self.download_clicked)
         
         #Variables with data
         self.curr_proj=None #Currently selected Xnat Project
@@ -174,7 +178,8 @@ class StartQT(QtWidgets.QMainWindow):
         self.d_format=1  #1=DCM, 2=AFNI , 3=NIFTI, 4=CUSTOM
         self.download_begin=0  #Flag to start downloading        
         
-        
+        #Colors
+        self.colors=["#FFFFCC","#CCFFCC","#CCFFFF","#CCFFFF","#E0E0E0","#FFCCCC","#FFE5CC","#E5FFCC","#CCFFE5","#CCCCFF","#FFCCE5"]
         #Initialize stuff
         self.loadConfig()
         self.initDirs()
@@ -201,13 +206,46 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.grp_what.setEnabled(False)
         self.main_ui.grp_download_method.setEnabled(False)
 
+        #Flag to denote all download destination paths are unique
+        self.fl_download_paths_uniq=False
+        self.dict_duplicate_paths=defaultdict(list)
         
         self.page1_clicked() #Go to the first page.
         #self.testTable()
     
+    def download_clicked(self):
+        if self.dict_duplicate_paths:
+            self.PopupDlg("Please Remove Duplicate Paths !!\nCheck same colored rows")
+        else:
+            if self.DownloadMsgBox(self.d_format)==1024: #1024 = 0x00000400  , the message sent when OK is pressed
+                pass
 
-        
     
+    
+
+    def identify_duplicate_paths(self):
+        path_list=[]
+        for i in range(self.main_ui.lst_dest_pick.count()):
+            path_list.append(self.main_ui.lst_dest_pick.item(i).text()+'/'+self.main_ui.lst_filename.item(i).text())
+            self.main_ui.lst_dest_pick.item(i).setBackground(QtGui.QColor("transparent"))
+            self.main_ui.lst_filename.item(i).setBackground(QtGui.QColor("transparent"))
+        self.dict_duplicate_paths.clear()
+        self.dict_duplicate_paths=defaultdict(list)
+        for i,item in enumerate(path_list):
+            self.dict_duplicate_paths[item].append(i)
+        self.dict_duplicate_paths = {k:v for k,v in self.dict_duplicate_paths.items() if len(v)>1}
+        print(self.dict_duplicate_paths)
+        i=0
+        for key,val in self.dict_duplicate_paths.items():
+            for itm in val:
+                self.main_ui.lst_dest_pick.item(itm).setBackground(QtGui.QColor(self.colors[i]))
+                self.main_ui.lst_filename.item(itm).setBackground(QtGui.QColor(self.colors[i]))
+            if (i+1)==len(self.colors):
+                i=0
+            else:
+                i+=1
+
+                
     
     def send2path_edt(self):
         if self.main_ui.rb_send_path.isChecked():
@@ -310,6 +348,11 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page4=True
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
+        
+        
+        self.fl_Subj_checked=True
+        self.fl_Sess_checked=True
+        self.fl_Scan_checked=True
         self.main_ui.btn_page2.setEnabled(True)
         self.main_ui.tree_sessions.setEnabled(False)
         self.main_ui.lst_subjects.setEnabled(False)
@@ -350,6 +393,8 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
         
+        self.fl_Subj_checked=True
+        self.fl_Sess_checked=True
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.tree_sessions.blockSignals(True)
         if item.checkState(column) == QtCore.Qt.Checked:  #Checked
@@ -520,7 +565,8 @@ class StartQT(QtWidgets.QMainWindow):
                 else:
                     self.main_ui.tree_sessions.setEnabled(True)
             if item_sub.checkState(): #Item is Checked - checkState is True
-                
+                self.fl_refresh_page5=True
+                self.fl_Subj_checked=True
                 if str(item_sub.text()) not in self.tree_all:
                     tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
                     #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
@@ -562,6 +608,7 @@ class StartQT(QtWidgets.QMainWindow):
             else:
             
                 sub=self.dict_checked_all.pop(str(item_sub.text()),None)
+                
                 #print sub
                 root=self.main_ui.tree_sessions.invisibleRootItem()
                 for sess in sub:
@@ -757,13 +804,11 @@ class StartQT(QtWidgets.QMainWindow):
                     #itm_dest.setData(1,QtCore.QVariant(int_path))
                     itm_dest.setToolTip(int_path)
                     
-                    
-                    
                     self.main_ui.lst_sel_log.addItem(itm_src)
                     self.main_ui.lst_dest_pick.addItem(itm_dest)
                     self.main_ui.lst_filename.addItem(itm_fname)
                     self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
-                    self.download_cmd_refresh()
+        self.download_cmd_refresh()
                     
     def download_cmd_refresh(self):
         #Make FUll Command in the ListWidget
@@ -774,6 +819,7 @@ class StartQT(QtWidgets.QMainWindow):
                     itm_cmd=QtWidgets.QListWidgetItem(self.main_ui.edt_down_cmd.text())
                     itm_cmd.setFlags(itm_cmd.flags() | QtCore.Qt.ItemIsEditable)
                     self.main_ui.lst_cmd.addItem(itm_cmd)
+        self.identify_duplicate_paths()
 
     def afni_clicked(self):
         #Afni doesn't run on Windows
@@ -844,11 +890,21 @@ class StartQT(QtWidgets.QMainWindow):
 
         header = ['Subject', 'Session', 'ScanID', 'ScanType','Quality']
         data_list=[]
-        
-        for subj,sess_dict in self.dict_checked_all.items():
-            for sess,scan_dict in sess_dict.items():
-                for sc_id,sc_type in scan_dict[1][1].items():
-                    data_list.append((subj,sess,sc_id,sc_type,self.lookup_scan_quality(subj,sess,sc_id)))
+        # 3 flags , Subj_checked, Sess_checked, Scan_checked
+        if self.fl_Subj_checked and not self.fl_Sess_checked and not self.fl_Scan_checked:
+            header=header[:1]
+            for subj,sess_dict in self.dict_checked_all.items():
+                data_list.append((subj,))
+        elif self.fl_Subj_checked and self.fl_Sess_checked and not self.fl_Scan_checked:
+            header=header[:2]
+            for subj,sess_dict in self.dict_checked_all.items():
+                for sess,scan_dict in sess_dict.items():
+                    data_list.append((subj,sess))
+        elif self.fl_Subj_checked and self.fl_Sess_checked and self.fl_Scan_checked:
+            for subj,sess_dict in self.dict_checked_all.items():
+                for sess,scan_dict in sess_dict.items():
+                    for sc_id,sc_type in scan_dict[1][1].items():
+                        data_list.append((subj,sess,sc_id,sc_type,self.lookup_scan_quality(subj,sess,sc_id)))
         
         self.main_ui.tableView.setModel(MyTableModel(self,data_list,header))
         self.main_ui.tableView.setSortingEnabled(True)
@@ -1070,7 +1126,9 @@ class StartQT(QtWidgets.QMainWindow):
         del self.main_ui.grp_allScans[:] #Deleting contents of the list
 
     def reset_export(self)        :
-        pass
+        self.fl_Subj_checked=False
+        self.fl_Sess_checked=False
+        self.fl_Scan_checked=False
 
     def reset_download(self):
         self.main_ui.pb_final.setValue(66)
@@ -1099,6 +1157,7 @@ class StartQT(QtWidgets.QMainWindow):
         
         self.reset_process()
         self.reset_upload()
+        self.reset_export()
         self.reset_download()
         self.reset_destination()
         self.reset_source()
@@ -1254,6 +1313,25 @@ class StartQT(QtWidgets.QMainWindow):
         self.dlg=MyPopupDlg(msg_show)
         self.dlg.exec_()  #For modal dialog
         
+    def DownloadMsgBox(self,dformat):
+       if dformat==1:
+           dfformat='DICOM'
+       elif dformat==2:
+           dfformat='AFNI'
+       elif dformat==3:
+           dfformat='NIFTI'
+       elif dformat==4:
+           dfformat='CUSTOM'
+       msg = QtGui.QMessageBox()
+       msg.setIcon(QtGui.QMessageBox.Information)
+       msg.setText("READY ??")
+       msg.setInformativeText("All scans will be downloaded in %s format" %(dfformat))
+       msg.setWindowTitle("Begin Download")
+       msg.setDetailedText("Do not close the main window until you see the Finish window. \nCheck the progress bar for status.\nAfter all is done, Check the Log for any problems during download or conversion")
+       msg.setStandardButtons(QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+       #msg.buttonClicked.connect(self.MsgBoxBtn)
+       return msg.exec_()
+                      
     def closeEvent(self,event):
         result = QtWidgets.QMessageBox.question(self,
                       "Confirm Exit...",

@@ -2,7 +2,7 @@
 """
 Created on Wed Jun  7 15:13:15 2017
 
-@author: guptess
+@author: Sanket Gupte
 """
 import requests
 
@@ -37,10 +37,10 @@ class XnatRest:
         
     def getSubjects(self,proj):
         """
-       {'ID': 'Cerebra_S02566',
-        'URI': '/data/subjects/Cerebra_S02566',
+       {'ID': 'Xnat_S02566',
+        'URI': '/data/subjects/Xnat_S02566',
         'insert_date': '2016-07-27 13:27:23.636',
-        'insert_user': 'moynihanbt',
+        'insert_user': 'moynihan',
         'label': '184612',
         'project': '000'},
         """
@@ -52,20 +52,20 @@ class XnatRest:
 #        return ret_subs
     def getExperiments(self,proj,subj):
         """
-        {'ID': 'Cerebra_E03214',
-            'URI': '/data/experiments/Cerebra_E03214',
+        {'ID': 'Xnat_E03214',
+            'URI': '/data/experiments/Xnat_E03214',
             'date': '2017-02-23',
             'insert_date': '2017-03-02 09:57:35.695',
             'label': '185574-1',
             'project': '457',
-            'xnat:subjectassessordata/id': 'Cerebra_E03214',
+            'xnat:subjectassessordata/id': 'Xnat_E03214',
             'xsiType': 'xnat:mrSessionData'}
         """
         return self.get(proj,subj)
     def getScans(self,proj,subj,exp):
         """
         {'ID': '1',
-          'URI': '/data/experiments/Cerebra_E03214/scans/1',
+          'URI': '/data/experiments/Xnat_E03214/scans/1',
           'note': '',
           'quality': 'unknown',
           'series_description': 'localizer',
@@ -140,7 +140,7 @@ class XnatRest:
         """
         When pulling session resources
         [{'content': 'QC Data', 'tags': '', 
-        'cat_id': 'Cerebra_E03541', 
+        'cat_id': 'Xnat_E03541', 
         'element_name': 'xnat:resourceCatalog', 
         'category': 'resources', 'file_size': '756', 
         'xnat_abstractresource_id': '64655', 
@@ -187,8 +187,8 @@ class XnatRest:
     def getResourceFiles(self,proj=None,subj=None,exp=None,scan=None,resid=None,download=False):
         """
         Does a GET request according to the query
-        r=XCon._get("https://cerebra.nida.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/resources/MRSI/files")
-        r=XCon._get("https://cerebra.nida.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/scans/3/resources/DICOM/files")
+        r=XCon._get("https://Xnat.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/resources/MRSI/files")
+        r=XCon._get("https://Xnat.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/scans/3/resources/DICOM/files")
         
         """
         """
@@ -197,7 +197,7 @@ class XnatRest:
         'file_content': 'QC Data', 'cat_ID': '65429', 
         'collection': 'QC', 'file_format': 'csv', 
         'file_tags': '',
-        'URI': '/data/projects/483/subjects/Cerebra_S00573/experiments/Cerebra_E03472/resources/65429/files/QC-v1_0-20170621.csv', 
+        'URI': '/data/projects/483/subjects/Xnat_S00573/experiments/Xnat_E03472/resources/65429/files/QC-v1_0-20170621.csv', 
         'Size': '756'}]
         """
         #resid cannot be None

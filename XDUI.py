@@ -22,6 +22,7 @@ import subprocess
 from XRest import XnatRest
 import operator
 from collections import defaultdict
+from SwarmSubmitter import SwarmJob
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -149,6 +150,10 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.cmb_path_txt.addItems(CMBPATH)
         
         
+        #Flag to denote all download destination paths are unique
+        self.fl_download_paths_uniq=False
+        self.dict_duplicate_paths=defaultdict(list)
+        
         #Download Options Radio Button Signals
         #QtCore.QObject.connect(self.main_ui.rb_afni, QtCore.SIGNAL("toggled(bool)"), self.afni_clicked)
         self.main_ui.rb_afni.toggled.connect(self.afni_clicked)
@@ -176,6 +181,7 @@ class StartQT(QtWidgets.QMainWindow):
 
         #For Download Tab        
         self.d_format=1  #1=DCM, 2=AFNI , 3=NIFTI, 4=CUSTOM
+        self.main_ui.rb_dcm.setChecked(True)
         self.download_begin=0  #Flag to start downloading        
         
         #Colors
@@ -206,19 +212,22 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.grp_what.setEnabled(False)
         self.main_ui.grp_download_method.setEnabled(False)
 
-        #Flag to denote all download destination paths are unique
-        self.fl_download_paths_uniq=False
-        self.dict_duplicate_paths=defaultdict(list)
-        
         self.page1_clicked() #Go to the first page.
         #self.testTable()
     
     def download_clicked(self):
+        self.identify_duplicate_paths()
         if self.dict_duplicate_paths:
             self.PopupDlg("Please Remove Duplicate Paths !!\nCheck same colored rows")
         else:
             if self.DownloadMsgBox(self.d_format)==1024: #1024 = 0x00000400  , the message sent when OK is pressed
-                pass
+                MySwarm=SwarmJob(self.XConn,20)
+                for i in range(self.main_ui.lst_cmd.count()):
+                    MySwarm.addJob(self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
+                                   self.main_ui.lst_filename.item(i).text(),self.main_ui.lst_dest_pick.item(i).toolTip(),
+                                   self.main_ui.lst_cmd.item(i).text(),str(i+1))
+                MySwarm.RunSwarm()
+                
 
     
     
@@ -384,7 +393,6 @@ class StartQT(QtWidgets.QMainWindow):
             pass #QtCore.Qt.PartiallyChekced
         
 
-                    
     
     def handle_sess(self, item, column):
         self.fl_refresh_page2=True
@@ -432,31 +440,46 @@ class StartQT(QtWidgets.QMainWindow):
             self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
         except NameError:
             pass
-        if 'scans' not in self.tree_all[str(subj)][str(sess)]:
-            tmp_sess_list=self.XConn.getScans(self.curr_proj,subj,sess)
-            #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
-            self.tree_all[str(subj)][str(sess)]['scans']={}
-            for scan in tmp_sess_list:
-                self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
+        if self.main_ui.rb_sess_res.isChecked(): #If we want resources and not scans
+            #print("Checked Session. With Resources")
+            if 'res' not in self.tree_all[str(subj)][str(sess)]:
+                tmp_res_list=self.XConn.getResourcesList(self.curr_proj,subj,sess)
+                self.tree_all[str(subj)][str(sess)]['res']={}
+                for sess_res in tmp_res_list:
+                    self.tree_all[str(subj)][str(sess)]['res'][sess_res['label']]={k:v for k,v in sess_res.items() if k in ['xnat_abstractresource_id']} #Getting only select things from the session resources dict
+            for r_lbl,r_det in self.tree_all[str(subj)][str(sess)]['res'].items():
+                self.dict_checked_all[str(subj)][str(sess)][2][0][r_lbl]= [] #List of Resources under r_lbl  #r_det['xnat_abstractresource_id']
+                self.add_to_scan_tree_res(subj, sess,r_lbl)  #Adding a dict of resource files to this []
                 
-        for s_id,s_det in self.tree_all[str(subj)][str(sess)]['scans'].items():
-            if s_det['quality'] in self.getCheckedScanQualityLabels(): #Add to tree only if needed
-                self.add_to_scan_tree(subj, sess,s_id,s_det['type'])
-                # Adding to dict_checked_all
-                self.dict_checked_all[str(subj)][str(sess)][1][0][s_id]=s_det['type']
+        else: #If we want scans
+            if 'scans' not in self.tree_all[str(subj)][str(sess)]:
+                tmp_sess_list=self.XConn.getScans(self.curr_proj,subj,sess)
+                #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
+                self.tree_all[str(subj)][str(sess)]['scans']={}
+                for scan in tmp_sess_list:
+                    self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
+            for s_id,s_det in self.tree_all[str(subj)][str(sess)]['scans'].items():
+                if s_det['quality'] in self.getCheckedScanQualityLabels(): #Add to tree only if needed
+                    self.add_to_scan_tree(subj, sess,s_id,s_det['type'])
+                    # Adding to dict_checked_all
+                    self.dict_checked_all[str(subj)][str(sess)][1][0][s_id]=s_det['type']
 
     def handle_sess_UnChk(self,subj,sess):
         """
         When a session is marked UnChecked
         """
-        
-        for k_scan,v_scan in self.dict_checked_all[str(subj)][str(sess)][1][0].items():
-            self.remove_frm_scan_tree(str(subj),str(sess),k_scan,v_scan)
-        for k_scan,v_scan in self.dict_checked_all[str(subj)][str(sess)][1][1].items():
-            self.remove_frm_scan_tree(str(subj),str(sess),k_scan,v_scan)
-        self.dict_checked_all[str(subj)][str(sess)][1][0].clear() #Clearing UnSelected
-        self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
+        if self.main_ui.rb_sess_res.isChecked(): #If we want Resources not scans
+            pass
+        else:        #If we want scans
+            for k_scan,v_scan in self.dict_checked_all[str(subj)][str(sess)][1][0].items():
+                self.remove_frm_scan_tree(str(subj),str(sess),k_scan,v_scan)
+            for k_scan,v_scan in self.dict_checked_all[str(subj)][str(sess)][1][1].items():
+                self.remove_frm_scan_tree(str(subj),str(sess),k_scan,v_scan)
+            self.dict_checked_all[str(subj)][str(sess)][1][0].clear() #Clearing UnSelected
+            self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
 
+    def add_to_scan_tree_res(self,subj,sess,res_lbl):
+        tmp_res_files=self.XConn.getResourceFiles(self.curr_proj,subj,sess,None,res_lbl)
     def add_to_scan_tree(self,subj,sess,scan_id,scan_type):  # args are Non-Xnat terms/(labels not IDs)
         root=self.main_ui.tree_scans.invisibleRootItem()
         flag=0
@@ -475,10 +498,10 @@ class StartQT(QtWidgets.QMainWindow):
             child = QtWidgets.QTreeWidgetItem(parent)
             child.setText(0,sess)
             child.setStatusTip(0,scan_id)
-
+    def remove_frm_scan_tree_res(self,subj,sess,res_lbl):
+        pass
     def remove_frm_scan_tree(self,subj,sess,scan_id,scan_type):  # args are Non-Xnat terms/(labels not IDs)
         root=self.main_ui.tree_scans.invisibleRootItem()
-        
         for index in range(root.childCount()):
             if root.child(index).text(0)==scan_type:
                 for ind2 in range(root.child(index).childCount()):
@@ -519,7 +542,7 @@ class StartQT(QtWidgets.QMainWindow):
         else:
             self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         if self.main_ui.rb_subj_sess.isChecked():
-            print("Sessions Selected")
+            #print("Sessions Selected")
             self.main_ui.grp_scan_quality.setVisible(True)
             self.main_ui.lbl_scan.setVisible(True)
             self.main_ui.vf_sessions.setVisible(True)
@@ -535,7 +558,7 @@ class StartQT(QtWidgets.QMainWindow):
         else:
             self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         if self.main_ui.rb_subj_res.isChecked():
-            print("Resources Selected")
+            #self.main_ui.tree_scans.clear()
             self.main_ui.grp_scan_quality.setVisible(False)
             self.main_ui.lbl_scan.setVisible(False)
             self.main_ui.vf_sessions.setVisible(False)
@@ -581,7 +604,7 @@ class StartQT(QtWidgets.QMainWindow):
                 self.dict_checked_all[str(item_sub.text())]={}
                 for sess in self.tree_all[str(item_sub.text())]:                
                     #self.dict_checked_all[str(item_sub.text())][sess]=[self.strip_sub_id(str(item_sub.text()),sess),{}] #Using the Processor
-                    self.dict_checked_all[str(item_sub.text())][sess]=[self.tree_all[str(item_sub.text())][sess]['strip'],{0: {}, 1: {}}] # 0= Not selected, 1=Selected scans
+                    self.dict_checked_all[str(item_sub.text())][sess]=[self.tree_all[str(item_sub.text())][sess]['strip'],{0: {}, 1: {}},{0: {}, 1: {}}] # 0= Not selected, 1=Selected scans & resources || So, [1] is scans,[2] is resources
     
                 root=self.main_ui.tree_sessions.invisibleRootItem()
     
@@ -1322,13 +1345,13 @@ class StartQT(QtWidgets.QMainWindow):
            dfformat='NIFTI'
        elif dformat==4:
            dfformat='CUSTOM'
-       msg = QtGui.QMessageBox()
-       msg.setIcon(QtGui.QMessageBox.Information)
+       msg = QtWidgets.QMessageBox()
+       msg.setIcon(QtWidgets.QMessageBox.Information)
        msg.setText("READY ??")
        msg.setInformativeText("All scans will be downloaded in %s format" %(dfformat))
        msg.setWindowTitle("Begin Download")
-       msg.setDetailedText("Do not close the main window until you see the Finish window. \nCheck the progress bar for status.\nAfter all is done, Check the Log for any problems during download or conversion")
-       msg.setStandardButtons(QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+       msg.setDetailedText("Do not close the main window until you see the Finish Popup. \nCheck the progress bar for status.\nAfter all is done, Check the Log for any problems during download or conversion")
+       msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
        #msg.buttonClicked.connect(self.MsgBoxBtn)
        return msg.exec_()
                       

@@ -137,6 +137,16 @@ class XnatRest:
         """
         Gets a list of resources for the level specified last
         """
+        """
+        When pulling session resources
+        [{'content': 'QC Data', 'tags': '', 
+        'cat_id': 'Cerebra_E03541', 
+        'element_name': 'xnat:resourceCatalog', 
+        'category': 'resources', 'file_size': '756', 
+        'xnat_abstractresource_id': '64655', 
+        'file_count': '1', 'label': 'QC', 
+        'format': 'csv', 'cat_desc': ' '}]
+        """
         tail="?format=json"
         if proj==None:
             url="/data/archive/projects"
@@ -180,6 +190,15 @@ class XnatRest:
         r=XCon._get("https://cerebra.nida.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/resources/MRSI/files")
         r=XCon._get("https://cerebra.nida.nih.gov/data/archive/projects/186/subjects/185861/experiments/185861-1PRE/scans/3/resources/DICOM/files")
         
+        """
+        """
+        When Getting a session resource 
+        [{'Name': 'QC-v1_0-20170621.csv', 
+        'file_content': 'QC Data', 'cat_ID': '65429', 
+        'collection': 'QC', 'file_format': 'csv', 
+        'file_tags': '',
+        'URI': '/data/projects/483/subjects/Cerebra_S00573/experiments/Cerebra_E03472/resources/65429/files/QC-v1_0-20170621.csv', 
+        'Size': '756'}]
         """
         #resid cannot be None
         if not resid:
@@ -237,6 +256,7 @@ class XnatRest:
             print ("Request Failed")
             print ("    " + str( e ))
             print ("    Please Check Username/Password")
+            print ("    Make sure you are connected to the Internet/VPN")
             return 0
             #sys.exit(1)
         return r

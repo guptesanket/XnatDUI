@@ -27,7 +27,7 @@ from SwarmSubmitter import SwarmJob
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
 #Pre-set ComboBox translations for Path Creation screen
-CMBPATH=['PROJ','SUBJ','SESS','SCAN']
+CMBPATH=['PROJ','SUBJ','SESS','SCAN','SCANID']
 
 if system()=='Windows':
     CUST_PROG_CONV='<Custom Program> -LocOfDcmFiles %Output-Dir%\* -CustomFileExtension %File-Name% -CustomFileDOwnloadLocation %Output-Dir%\Custom'
@@ -47,7 +47,6 @@ try:
 except AttributeError:
     def _translate(context, text, disambig):
         return QtWidgets.QApplication.translate(context, text, disambig)
-    
 # Memoise function to speed up things
 def memoise(f):
     cache ={}
@@ -106,6 +105,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_quality_5.clicked.connect(self.scan_quality_checked)
         self.main_ui.chk_quality_6.clicked.connect(self.scan_quality_checked)
 
+        self.resource_labels=[]
         self.resource_checkBoxes=[self.main_ui.chk_res_1,self.main_ui.chk_res_2,self.main_ui.chk_res_3,self.main_ui.chk_res_4,self.main_ui.chk_res_5]
         self.main_ui.chk_res_1.clicked.connect(self.res_type_checked)
         self.main_ui.chk_res_2.clicked.connect(self.res_type_checked)
@@ -227,10 +227,6 @@ class StartQT(QtWidgets.QMainWindow):
                                    self.main_ui.lst_filename.item(i).text(),self.main_ui.lst_dest_pick.item(i).toolTip(),
                                    self.main_ui.lst_cmd.item(i).text(),str(i+1))
                 MySwarm.RunSwarm()
-                
-
-    
-    
 
     def identify_duplicate_paths(self):
         path_list=[]
@@ -440,10 +436,13 @@ class StartQT(QtWidgets.QMainWindow):
             self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
         except NameError:
             pass
+        
         if self.main_ui.rb_sess_res.isChecked(): #If we want resources and not scans
             #print("Checked Session. With Resources")
             if 'res' not in self.tree_all[str(subj)][str(sess)]:
                 tmp_res_list=self.XConn.getResourcesList(self.curr_proj,subj,sess)
+                #print("----------------------------")
+                #print(tmp_res_list)
                 self.tree_all[str(subj)][str(sess)]['res']={}
                 for sess_res in tmp_res_list:
                     self.tree_all[str(subj)][str(sess)]['res'][sess_res['label']]={k:v for k,v in sess_res.items() if k in ['xnat_abstractresource_id']} #Getting only select things from the session resources dict
@@ -457,12 +456,20 @@ class StartQT(QtWidgets.QMainWindow):
                 #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
                 self.tree_all[str(subj)][str(sess)]['scans']={}
                 for scan in tmp_sess_list:
+                    #sc_res=self.XConn.getResourcesList(self.curr_proj,subj,sess,scan['ID'])
+                    #sc_res=self.XConn.getScanResources(self.curr_proj,subj,sess,scan['ID'])
+                    #----------------Need to finish this thing-----
                     self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
+                    #self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]['res']=[res['label'] for res in sc_res ] #List of resources for this scan for e.g. DICOM, NIFTI, etc.
+#                    for res in sc_res: #Adding the Resource checkbox if it doesn't exist already
+#                        if res['label'] not in self.resource_labels:
+#                            self.addResourceCheckBox(res['label'] )
             for s_id,s_det in self.tree_all[str(subj)][str(sess)]['scans'].items():
-                if s_det['quality'] in self.getCheckedScanQualityLabels(): #Add to tree only if needed
+                if s_det['quality'] in self.getCheckedScanQualityLabels() : #and s_det['res'] in self.getCheckedResourceLabels: #Add to tree only if needed
                     self.add_to_scan_tree(subj, sess,s_id,s_det['type'])
                     # Adding to dict_checked_all
                     self.dict_checked_all[str(subj)][str(sess)][1][0][s_id]=s_det['type']
+        
 
     def handle_sess_UnChk(self,subj,sess):
         """
@@ -479,7 +486,12 @@ class StartQT(QtWidgets.QMainWindow):
             self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
 
     def add_to_scan_tree_res(self,subj,sess,res_lbl):
+        """
+        When Session 'resources' are required. Adding the session Resources to the scan-tree
+        """
         tmp_res_files=self.XConn.getResourceFiles(self.curr_proj,subj,sess,None,res_lbl)
+        #print("---add_to_scan_tree_res-------------")
+        #print(tmp_res_files)
     def add_to_scan_tree(self,subj,sess,scan_id,scan_type):  # args are Non-Xnat terms/(labels not IDs)
         root=self.main_ui.tree_scans.invisibleRootItem()
         flag=0
@@ -553,10 +565,10 @@ class StartQT(QtWidgets.QMainWindow):
 
     def subj_res_rb_selected(self):
         self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:;"))
-        if not self.main_ui.lst_subjects.isEnabled() and (self.main_ui.rb_sess_scans.isChecked() or self.main_ui.rb_sess_res.isChecked()):
+        if not self.main_ui.lst_subjects.isEnabled() :#and (self.main_ui.rb_sess_scans.isChecked() or self.main_ui.rb_sess_res.isChecked()):
             self.main_ui.lst_subjects.setEnabled(True)
-        else:
-            self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
+#        else:
+#            self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         if self.main_ui.rb_subj_res.isChecked():
             #self.main_ui.tree_scans.clear()
             self.main_ui.grp_scan_quality.setVisible(False)
@@ -779,7 +791,7 @@ class StartQT(QtWidgets.QMainWindow):
                     scan_name=self.dict_checked_all[subj][sess][1][1][scan]
                     src_path="Proj:"+str(self.curr_proj)+"| Subj:"+str(subj)+"| Exp:"+str(sess)+"| Scan:"+str(scan_name)
                     #print src_path
-                    int_path='/project/'+str(self.curr_proj)+'/subjects/'+str(subj)+'/experiments/'+str(sess)+'/scans/'+str(scan)
+                    int_path='/data/archive/projects/'+str(self.curr_proj)+'/subjects/'+str(subj)+'/experiments/'+str(sess)+'/scans/'+str(scan)
                     #print int_path
                     
                     dest_path=""
@@ -792,6 +804,8 @@ class StartQT(QtWidgets.QMainWindow):
                             dest_path+=str(sess)
                         elif dst_spl in ["scan","SCAN"]:
                             dest_path+=str(scan_name)
+                        elif dst_spl in ["scanid","SCANID"]:
+                            dest_path+=str(scan)
                         else:
                             dest_path+=str(dst_spl)
                     
@@ -805,6 +819,8 @@ class StartQT(QtWidgets.QMainWindow):
                             dst_c_fn+=str(sess)
                         elif dst_fn in ["scan","SCAN"]:
                             dst_c_fn+=str(scan_name)
+                        elif dst_fn in ["scanid","SCANID"]:
+                            dst_c_fn+=str(scan)
                         else:
                             dst_c_fn+=dst_fn
 
@@ -945,6 +961,7 @@ class StartQT(QtWidgets.QMainWindow):
         
     def page2_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(1)
+        self.fl_refresh_page3=True
         if self.fl_refresh_page2:
             self.fl_refresh_page2=False
             self.refresh_page2()
@@ -1055,19 +1072,21 @@ class StartQT(QtWidgets.QMainWindow):
             if chkBox.isChecked():
                 chkLabels.append(chkBox.text())
         return chkLabels
+    def getCheckedResourceLabels(self):
+        """
+        returns the list of quality labels that are checked.
+        """
+        chkLabels=[]
+        for chkBox in self.resource_checkBoxes:
+            if chkBox.isChecked():
+                chkLabels.append(chkBox.text())
+        return chkLabels
     
     def res_type_checked(self):
         """
         When any of the resources checkboxes are checked/Unchecked
         """
-        pass
-
-    def getCheckedResourceLabels(self):
-        """
-        returns the list of quality labels that are checked.
-        """
-        
-        return 0    
+        pass 
 
     def createScanQualityCheckBoxes(self):
         print("Cleaning Scan Quality Labels")
@@ -1075,7 +1094,7 @@ class StartQT(QtWidgets.QMainWindow):
         if self.scan_quality_labels !=0:
             print("Found labels")
             if len(self.scan_quality_labels) >len(self.scan_quality_checkBoxes):
-                self.PopupDlg("This Xnat has too many scan Quality Labels. Keeping only first 5")
+                self.PopupDlg("This Xnat has too many scan Quality Labels. Keeping only first %d"%len(self.scan_quality_checkBoxes))
                 self.scan_quality_labels=self.scan_quality_labels[:len(self.scan_quality_checkBoxes)]
             i=0
             for qualityLbl in self.scan_quality_labels:
@@ -1086,7 +1105,27 @@ class StartQT(QtWidgets.QMainWindow):
                 self.scan_quality_checkBoxes[i].setChecked(False)
                 self.scan_quality_checkBoxes[i].setVisible(False)
                 i+=1
-
+    def addResourceCheckBox(self,label):
+        
+        if len(self.resource_labels) == len(self.resource_checkBoxes):
+            self.PopupDlg("This Xnat has too many Resources. Keeping only first %d"%len(self.resource_checkBoxes))
+        else:
+            self.resource_labels.append(label)
+            i=0
+            for res_lbl in self.resource_labels:
+                self.resource_checkBoxes[i].setText(res_lbl)
+                self.resource_checkBoxes[i].setChecked(True)
+                i+=1
+            for chkBox in range(i,len(self.resource_checkBoxes)):
+                self.resource_checkBoxes[i].setChecked(False)
+                self.resource_checkBoxes[i].setVisible(False)
+                i+=1
+            
+        
+    
+#    def removeResourceCheckBox(self,label):
+#        self.resource_labels.remove(label)
+        
 
     
             

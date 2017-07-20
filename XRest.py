@@ -5,6 +5,12 @@ Created on Wed Jun  7 15:13:15 2017
 @author: Sanket Gupte
 """
 import requests
+import os
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+CHUNKSIZE=512
 
 class XnatRest:
     def __init__(self,host,user,passwd,verify=True):
@@ -146,6 +152,13 @@ class XnatRest:
         'xnat_abstractresource_id': '64655', 
         'file_count': '1', 'label': 'QC', 
         'format': 'csv', 'cat_desc': ' '}]
+            
+        For scan resources
+        [{'content': 'RAW', 'tags': '', 'cat_id': '11', 
+        'element_name': 'xnat:resourceCatalog', 'category': 'scans', 
+        'file_size': '137058630', 'xnat_abstractresource_id': '17972', 
+        'file_count': '275', 'label': 'DICOM', 'format': 'DICOM', 
+        'cat_desc': 'EP_Prediction_v1.0'}]
         """
         tail="?format=json"
         if proj==None:
@@ -184,6 +197,16 @@ class XnatRest:
             else:
                 return result.json()['ResultSet']['Result']
             
+    def getScanResources(self,proj,subj,exp,scan):
+        """
+        Separate method just for scan, to speed it up
+        """
+        result=self._get(self.host+"/data/archive/projects/"+proj+"/subjects/"+subj+"/experiments/"+exp+"/scans/"+scan+"/resources?format=json")
+        if result==0:
+            return 0
+        else:
+            return result.json()['ResultSet']['Result']
+            
     def getResourceFiles(self,proj=None,subj=None,exp=None,scan=None,resid=None,download=False):
         """
         Does a GET request according to the query
@@ -205,7 +228,7 @@ class XnatRest:
             return []
         
         if download: #If true, will download as a zip. This doesn't work yet.
-            tail="?format=zip"
+            tail="?format=zip"  ##Made a separate Download Function. Wont need this
         else:        #Else will give a list of files
             tail="?format=json"
         if proj==None:
@@ -260,8 +283,36 @@ class XnatRest:
             return 0
             #sys.exit(1)
         return r
+    
+    def getZip(self,url,fs_path,fs_fname):
+        """
+        Hello
+        """
+        tail="/files/?format=zip"
+        try:
+            print("URL:  "+self.host+url+tail)
+            response = self.intf.get(self.host+url+tail,stream=True)
+            if response.status_code !=200:
+                print("Something wrong yo")
+            # Get the content length if available
+            content_length = response.headers.get('Content-Length', -1)
+            if isinstance(content_length,str):
+                content_length=int(content_length)
+            fd= open(os.path.join(fs_path,fs_fname),"wb")
+            #Use bytes_read for progress bar
+            #bytes_read=0
+            for chunk in response.iter_content(chunk_size=CHUNKSIZE):
+                if chunk: #Filter out keep-alive new chunks
+                    if chunk[0] == '<' and chunk.startswith(('<!DOCTYPE', '<html>')):#bytes_read==0 and chunk[0] == '<' and chunk.startswith(('<!DOCTYPE', '<html>')):
+                        print("Invalid response from XNAT")
+                    #bytes_read += len(chunk)
+                    fd.write(chunk)
+            fd.close()
+            
+        except :
+            pass
 
-    def _put(url,**kwargs):
+    def _put(self,url,**kwargs):
         """
         Does a PUT on the url
         """
@@ -271,7 +322,7 @@ class XnatRest:
         except (requests.ConnectionError, requests.exceptions.RequestException) as e:
             print ("Request Failed")
             print ("    " + str( e ))
-            sys.exit(1)
+            #sys.exit(1)
         return r
 
     def putFile():

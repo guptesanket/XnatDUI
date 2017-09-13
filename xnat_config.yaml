@@ -29,6 +29,20 @@ sys-init:
     - ".xnat-dui-cache"
   #Log level to store in logfile
   loglevel: "detail" #Possible values: detail , short
+  #Colors used in tables to identify duplicate fields
+  colors:
+    - "#FFFFCC"
+    - "#CCFFCC"
+    - "#CCFFFF"
+    - "#CCFFFF"
+    - "#E0E0E0"
+    - "#FFCCCC"
+    - "#FFE5CC"
+    - "#E5FFCC"
+    - "#CCFFE5"
+    - "#CCCCFF"
+    - "#FFCCE5"
+
 down-init:
   nfs-mnt: "/.NFS/xnat"
   pathprefix-linux: "/prot/%PROJ%"

@@ -23,6 +23,8 @@ from XRest import XnatRest
 import operator
 from collections import defaultdict
 from SwarmSubmitter import SwarmJob
+from time import sleep
+import asyncio
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -96,6 +98,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.scan_quality_labels=None
         #Scan Quality CheckBoxes
         #To add additional scan qualities, add a checkbox in the xnatui.py file in the appropriate groupbox. Then add the id of that checkbox in this list
+        #This can be more Muggle-Friendly by pulling number of scan qualities from the config file and creating that many checkboxes.
         self.scan_quality_checkBoxes=[self.main_ui.chk_quality_1,self.main_ui.chk_quality_2,self.main_ui.chk_quality_3,
                                       self.main_ui.chk_quality_4,self.main_ui.chk_quality_5,self.main_ui.chk_quality_6]
         self.main_ui.chk_quality_1.clicked.connect(self.scan_quality_checked)
@@ -106,6 +109,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_quality_6.clicked.connect(self.scan_quality_checked)
 
         self.resource_labels=[]
+        #This can be more Muggle-Friendly by pulling number of resources from the config file and creating that many checkboxes.
         self.resource_checkBoxes=[self.main_ui.chk_res_1,self.main_ui.chk_res_2,self.main_ui.chk_res_3,self.main_ui.chk_res_4,self.main_ui.chk_res_5]
         self.main_ui.chk_res_1.clicked.connect(self.res_type_checked)
         self.main_ui.chk_res_2.clicked.connect(self.res_type_checked)
@@ -184,12 +188,12 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.rb_dcm.setChecked(True)
         self.download_begin=0  #Flag to start downloading        
         
-        #Colors
-        self.colors=["#FFFFCC","#CCFFCC","#CCFFFF","#CCFFFF","#E0E0E0","#FFCCCC","#FFE5CC","#E5FFCC","#CCFFE5","#CCCCFF","#FFCCE5"]
-        #Initialize stuff
+        #Initialize stuff. The sequence is important.
         self.loadConfig()
         self.initDirs()
         self.loadUserConfig()
+        #Load the colors from the config. #sysConfig variable is initialized in loadConfig
+        self.colors=self.sysConfig['sys-init']['colors']
         
         
         #Disabling Buttons 
@@ -221,12 +225,34 @@ class StartQT(QtWidgets.QMainWindow):
             self.PopupDlg("Please Remove Duplicate Paths !!\nCheck same colored rows")
         else:
             if self.DownloadMsgBox(self.d_format)==1024: #1024 = 0x00000400  , the message sent when OK is pressed
-                MySwarm=SwarmJob(self.XConn,20)
+                #MySwarm=SwarmJob(self.XConn,20)
+                aList=[]
                 for i in range(self.main_ui.lst_cmd.count()):
-                    MySwarm.addJob(self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
+                    #MySwarm.addJob(self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
+                    #               self.main_ui.lst_filename.item(i).text(),self.main_ui.lst_dest_pick.item(i).toolTip(),
+                    #               self.main_ui.lst_cmd.item(i).text(),str(i+1))
+                    aList.append([self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
                                    self.main_ui.lst_filename.item(i).text(),self.main_ui.lst_dest_pick.item(i).toolTip(),
-                                   self.main_ui.lst_cmd.item(i).text(),str(i+1))
-                MySwarm.RunSwarm()
+                                   self.main_ui.lst_cmd.item(i).text(),str(i+1)])
+                #MySwarm.RunSwarm()
+                event_loop=asyncio.get_event_loop()
+                try:
+                    event_loop.run_until_complete(self.download_async(aList))
+                finally:
+                    event_loop.close()
+                
+                
+    async def download_async(self,jobList):
+        
+        dRequests=[self.downloadRequest(i) for i in jobList]
+        for nxt2finish in asyncio.as_completed(dRequests):
+            return_val=await nxt2finish
+
+    async def downloadRequest(jobDefs):
+        """
+        Download the files here
+        """
+        return "ReturnValue"
 
     def identify_duplicate_paths(self):
         path_list=[]
@@ -401,26 +427,48 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_Sess_checked=True
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.tree_sessions.blockSignals(True)
+        self.main_ui.pb_inter.setValue(0)
         if item.checkState(column) == QtCore.Qt.Checked:  #Checked
             #print (item.text(0)+ " Checked")
-            
+            self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
+            self.main_ui.lbl_status.setText(' Getting data....WAIT')
             if item.childCount()==0:
                 sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
+                self.main_ui.pb_inter.setValue(10)
                 self.handle_sess_Chk(sess_det[0],item.text(0))
+                self.main_ui.pb_inter.setValue(100)
+                
             else:
-                for child in range(item.childCount()):
+                child_cnt=item.childCount()
+                incr=int(100/child_cnt)
+                tot=0
+                for child in range(child_cnt):
+                    tot=tot+incr
+                    self.main_ui.pb_inter.setValue(tot)
                     sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
                     self.handle_sess_Chk(sess_det[0],item.child(child).text(0))
+                
+                    
                     
         elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
             #print (item.text(0)+" Unchecked")
             if item.childCount()==0:
                 sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
+                self.main_ui.pb_inter.setValue(10)
                 self.handle_sess_UnChk(sess_det[0],item.text(0))
+                self.main_ui.pb_inter.setValue(100)
             else:
-                for child in range(item.childCount()):
+                child_cnt=item.childCount()
+                incr=int(100/child_cnt)
+                tot=0
+                for child in range(child_cnt):
+                    tot=tot+incr
+                    self.main_ui.pb_inter.setValue(tot)
                     sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
                     self.handle_sess_UnChk(sess_det[0],item.child(child).text(0))
+        self.main_ui.pb_inter.setValue(100)
+        self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;")) # f79f99 - Red
+        self.main_ui.lbl_status.setText('    Ready')
         self.main_ui.tree_sessions.blockSignals(False)
 
 
@@ -428,6 +476,8 @@ class StartQT(QtWidgets.QMainWindow):
         """
         When a session is marked Checked
         """
+
+        
         try:
             self.dict_checked_all[str(subj)][str(sess)][1][0].clear() #Clearing UnSelected
         except NameError:
@@ -436,9 +486,11 @@ class StartQT(QtWidgets.QMainWindow):
             self.dict_checked_all[str(subj)][str(sess)][1][1].clear() #Clearing Selected
         except NameError:
             pass
-        
+
         if self.main_ui.rb_sess_res.isChecked(): #If we want resources and not scans
             #print("Checked Session. With Resources")
+#            self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
+#            self.main_ui.lbl_status.setText('  Getting Resources')
             if 'res' not in self.tree_all[str(subj)][str(sess)]:
                 tmp_res_list=self.XConn.getResourcesList(self.curr_proj,subj,sess)
                 #print("----------------------------")
@@ -451,24 +503,27 @@ class StartQT(QtWidgets.QMainWindow):
                 self.add_to_scan_tree_res(subj, sess,r_lbl)  #Adding a dict of resource files to this []
                 
         else: #If we want scans
+#            self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
+#            self.main_ui.lbl_status.setText('  Getting Scans')
             if 'scans' not in self.tree_all[str(subj)][str(sess)]:
                 tmp_sess_list=self.XConn.getScans(self.curr_proj,subj,sess)
                 #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
                 self.tree_all[str(subj)][str(sess)]['scans']={}
                 for scan in tmp_sess_list:
                     #sc_res=self.XConn.getResourcesList(self.curr_proj,subj,sess,scan['ID'])
-                    #sc_res=self.XConn.getScanResources(self.curr_proj,subj,sess,scan['ID'])
-                    #----------------Need to finish this thing-----
+                    sc_res=self.XConn.getScanResources(self.curr_proj,subj,sess,scan['ID'])
                     self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
-                    #self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]['res']=[res['label'] for res in sc_res ] #List of resources for this scan for e.g. DICOM, NIFTI, etc.
-#                    for res in sc_res: #Adding the Resource checkbox if it doesn't exist already
-#                        if res['label'] not in self.resource_labels:
-#                            self.addResourceCheckBox(res['label'] )
+                    self.tree_all[str(subj)][str(sess)]['scans'][scan['ID']]['res']=[res['label'] for res in sc_res ] #List of resources for this scan for e.g. DICOM, NIFTI, etc.
+                    for res in sc_res: #Adding the Resource checkbox if it doesn't exist already
+                        if res['label'] not in self.resource_labels:
+                            self.addResourceCheckBox(res['label'] )
             for s_id,s_det in self.tree_all[str(subj)][str(sess)]['scans'].items():
                 if s_det['quality'] in self.getCheckedScanQualityLabels() : #and s_det['res'] in self.getCheckedResourceLabels: #Add to tree only if needed
                     self.add_to_scan_tree(subj, sess,s_id,s_det['type'])
                     # Adding to dict_checked_all
                     self.dict_checked_all[str(subj)][str(sess)][1][0][s_id]=s_det['type']
+                    
+
         
 
     def handle_sess_UnChk(self,subj,sess):
@@ -586,6 +641,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page4=True
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
+
         if self.fl_subjects_selection==1: #If "Resources" is selected
             #For Resources
             if item_sub.checkState(): #Item is Checked - checkState is True
@@ -599,20 +655,27 @@ class StartQT(QtWidgets.QMainWindow):
                     self.PopupDlg("Please Select if you want do download Scans or Resources")
                 else:
                     self.main_ui.tree_sessions.setEnabled(True)
+            self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
+            self.main_ui.lbl_status.setText('  Getting Sessions')
             if item_sub.checkState(): #Item is Checked - checkState is True
+                self.main_ui.pb_inter.setValue(0)
                 self.fl_refresh_page5=True
                 self.fl_Subj_checked=True
                 if str(item_sub.text()) not in self.tree_all:
+                    self.main_ui.pb_inter.setValue(10)
                     tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
                     #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
                     self.tree_all[str(item_sub.text())]={}
-                    
-                    for exp in tmp_exp_list: 
+                    inter=int(100/len(tmp_exp_list))
+                    tot=0
+                    for exp in tmp_exp_list:
+                        tot=tot+inter
+                        self.main_ui.pb_inter.setValue(tot)
                         if exp['xsiType']=='xnat:mrSessionData': #Getting experiments only of the type mrSessionData
                             self.tree_all[str(item_sub.text())][exp['label']]={}
                             self.tree_all[str(item_sub.text())][exp['label']]['exp']=exp['ID'] #Keeping only the ID  . No use for other fields for now.
                             self.tree_all[str(item_sub.text())][exp['label']]['strip']=self.strip_sub_id(str(item_sub.text()),exp['label'])
-                
+                self.main_ui.pb_inter.setValue(95)
                 self.dict_checked_all[str(item_sub.text())]={}
                 for sess in self.tree_all[str(item_sub.text())]:                
                     #self.dict_checked_all[str(item_sub.text())][sess]=[self.strip_sub_id(str(item_sub.text()),sess),{}] #Using the Processor
@@ -638,7 +701,8 @@ class StartQT(QtWidgets.QMainWindow):
                         child = QtWidgets.QTreeWidgetItem(parent)
                         child.setFlags(child.flags() | QtCore.Qt.ItemIsUserCheckable)
                         child.setText(0,sess)
-                        child.setCheckState(0,QtCore.Qt.Unchecked)                        
+                        child.setCheckState(0,QtCore.Qt.Unchecked)        
+                self.main_ui.pb_inter.setValue(100)
                                 
             else:
             
@@ -657,6 +721,9 @@ class StartQT(QtWidgets.QMainWindow):
                                         root.removeChild(root.child(index))
                                     break
                             break
+            self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;")) # f79f99 - Red
+            self.main_ui.lbl_status.setText('  Ready')
+
         else: #If none of "Resources" or "Sessions" is selected
             """
             This will never run. NEVER. I think.
@@ -1130,6 +1197,9 @@ class StartQT(QtWidgets.QMainWindow):
     
             
     def populate_subjects(self):
+        """
+        Populating the Subject List in the UI
+        """
         if self.main_ui.cmb_project.currentIndex()!=0:
             #print("Populating: "+str(self.curr_proj))
             self.li_subs.extend(self.XConn.getSubjects(self.curr_proj))
@@ -1161,6 +1231,9 @@ class StartQT(QtWidgets.QMainWindow):
                 self.main_ui.grp_what.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
             
     def reset_all_clicked(self):
+        """
+        When the 'Reset All' button is clicked
+        """
         self.main_ui.cmb_project.setCurrentIndex(0)
         self.reset_all()
 
@@ -1261,10 +1334,30 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_sessions.setEnabled(True)
         self.main_ui.lst_subjects.setEnabled(False)
         #self.curr_proj=self.main_ui.cmb_project.currentText()
+        #Reset RadioButtons
+        self.main_ui.rb_sel_upload.setAutoExclusive(False)
+        self.main_ui.rb_sel_download.setAutoExclusive(False)
         self.main_ui.rb_sel_upload.setChecked(False)
         self.main_ui.rb_sel_download.setChecked(False)
+        self.main_ui.rb_sel_upload.setAutoExclusive(True)
+        self.main_ui.rb_sel_download.setAutoExclusive(True)
+        #Reset More radio buttons        
+        self.main_ui.rb_subj_res.setAutoExclusive(False)
+        self.main_ui.rb_subj_sess.setAutoExclusive(False)
+        self.main_ui.rb_sess_scans.setAutoExclusive(False)
+        self.main_ui.rb_sess_res.setAutoExclusive(False)
+        self.main_ui.rb_subj_res.setChecked(False)
+        self.main_ui.rb_subj_sess.setChecked(False)
+        self.main_ui.rb_sess_scans.setChecked(False)
+        self.main_ui.rb_sess_res.setChecked(False)
+        self.main_ui.rb_subj_res.setAutoExclusive(True)
+        self.main_ui.rb_subj_sess.setAutoExclusive(True)
+        self.main_ui.rb_sess_scans.setAutoExclusive(True)
+        self.main_ui.rb_sess_res.setAutoExclusive(True)
+        
         self.main_ui.grp_what.setEnabled(False)
         self.refresh_page1=True
+        #Reset CheckBoxes
         for chkbox in self.scan_quality_checkBoxes:
             if chkbox.isVisible():
                 chkbox.setChecked(True)
@@ -1290,6 +1383,9 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         
     def prep_download(self):
+        """
+        Prepare the UI for downloading
+        """
         self.main_ui.tree_sessions.setEnabled(False)
         self.main_ui.btn_page1.setEnabled(True)
         self.main_ui.btn_page1.setVisible(True)
@@ -1316,6 +1412,9 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
         
     def prep_upload(self):
+        """
+        Prepare the UI for uploading
+        """
         self.main_ui.tree_sessions.setEnabled(True)
         self.main_ui.btn_page1.setEnabled(True)
         self.main_ui.btn_page1.setVisible(True)

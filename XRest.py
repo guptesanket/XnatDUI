@@ -82,6 +82,7 @@ class XnatRest:
         return self.get(proj,subj,exp)
     def getQualityLabels(self):
         """
+        The url "/REST/config/scan-quality/labels" stores all sitewide scan quality labels. 
         {'ResultSet': {'Result': [{'contents': 'unknown,usable,questionable,unusable\n',
             'create_date': '2014-03-10 14:00:36.086',
             'path': 'labels',

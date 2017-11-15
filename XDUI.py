@@ -248,7 +248,7 @@ class StartQT(QtWidgets.QMainWindow):
                     aList=[]
                     #items in aList - 0: Download Format
                     #               - 1: Download directory
-                    #               - 2: DOwnload filename
+                    #               - 2: DOwnload filename (with .zip appended at the end)
                     #               - 3: main URI
                     #               - 4: download structure
                     #               - 5: Counter
@@ -256,14 +256,14 @@ class StartQT(QtWidgets.QMainWindow):
                     for i in range(self.main_ui.lst_cmd.count()):
                         if len(resources)==1:
                             aList.append([self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
-                                       self.main_ui.lst_filename.item(i).text(),
+                                       self.main_ui.lst_filename.item(i).text()+'.zip',
                                        self.main_ui.lst_dest_pick.item(i).toolTip()+"/resources/"+resources[0],
                                        self.main_ui.lst_cmd.item(i).text(),str(i+1)])
                         else:
                             #Create Resources directory and add resource to URI, for each resource
                             for res in resources:
                                 aList.append([self.d_format,os.path.join(self.main_ui.lst_dest_pick.item(i).text(),res),
-                                       self.main_ui.lst_filename.item(i).text(),
+                                       self.main_ui.lst_filename.item(i).text()+'.zip',
                                        self.main_ui.lst_dest_pick.item(i).toolTip()+"/resources/"+res,
                                        self.main_ui.lst_cmd.item(i).text(),str(i+1)])
 
@@ -1913,8 +1913,8 @@ def cleanUpDownload(path,filename):
         f_renamed=True
         for aFile in allFiles:
             fPath=aFile.split('/')
-            try:
-                os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename+'-'+fPath[-1]))
+            try: #filename[:-4] to remove the .zip extension from the name
+                os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename[:-4]+'-'+fPath[-1]))
             except os.error as e:
                 f_renamed=False
                 raise #Do logging instead of raising
@@ -1922,7 +1922,7 @@ def cleanUpDownload(path,filename):
         if f_renamed: #If all files successfully moved, then delete the directory
             try:
                 # A bit of a risky thing to do. But o well. :)
-                shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0]),ignore_errors=True)
+                shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0])) #,ignore_errors=True)
             except os.error as e:
                 # Ignoring Errors, so this is kind of useless
                 if e.errno !=errno.EEXIST:

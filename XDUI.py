@@ -27,6 +27,7 @@ from time import sleep
 import asyncio
 import zipfile
 import shutil
+import concurrent.futures
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -265,90 +266,123 @@ class StartQT(QtWidgets.QMainWindow):
                                        self.main_ui.lst_filename.item(i).text(),
                                        self.main_ui.lst_dest_pick.item(i).toolTip()+"/resources/"+res,
                                        self.main_ui.lst_cmd.item(i).text(),str(i+1)])
-                            
-                    #MySwarm.RunSwarm()
+
                     #Creates an asynchronous loop, and downloads the things (asynchronously)
+#                    event_loop=asyncio.get_event_loop()
+#                    try:
+#                        event_loop.run_until_complete(self.download_async(aList))
+#                    finally:
+#                        event_loop.close()
+
+                    #Create an asynchronous loop and run it in an executor, that creates a separate thread/process                    
+                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.sysConfig['sys-init']['max-parallel'],)
                     event_loop=asyncio.get_event_loop()
                     try:
-                        event_loop.run_until_complete(self.download_async(aList))
+                        event_loop.run_until_complete(self.run_blocking_tasks(executor,aList))
                     finally:
                         event_loop.close()
-                
 
-    async def download_async(self,jobList):
-        """
-        A helper function for download_clicked
-        """
-        print("Going in the Download_Async helper")
-        dRequests=[self.downloadRequest(i) for i in jobList]
-        for nxt2finish in asyncio.as_completed(dRequests):
-            return_val=await nxt2finish
+#    async def download_async(self,jobList):
+#        """
+#        A helper function for download_clicked
+#        """
+#        #print("Going in the Download_Async helper")
+#        dRequests=[self.downloadRequest(i) for i in jobList]
+#        for nxt2finish in asyncio.as_completed(dRequests):
+#            return_val=await nxt2finish
         
-
-    async def downloadRequest(self,jobDefs):
+    async def run_blocking_tasks(self,executor,jobList): #Replacing download_async
         """
-        Helper function for download_clicked. Download the files here
-        """
-        tmp=','.join(str(e) for e in jobDefs)
         
-        #items in jobDefs - 0: Download Format
-        #                 - 1: Download directory
-        #                 - 2: DOwnload filename
-        #                 - 3: main resource URI 
-        #                 - 4: download structure
-        #                 - 5: Counter
-        if jobDefs[0]==1:
-            #Direct download no conversion
-            print ("Got 1 for >>>: %s"%tmp)
-            
-            #Make directories first
-            self.makeDirsIfNotExist(jobDefs[1])
-            # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
-            # Compared it to downloading each file one at a time, and it is considerably slower.
-            if self.XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
-                self.cleanUpDownload(jobDefs[1],jobDefs[2])
-            
-        elif jobDefs[0]==2:
-            #Converting to AFNI after downloading
-            print ("Got 2 for >>>: %s"%tmp)
-            
-        elif jobDefs[0]==3:
-            #Converting to NIFTI after downloading
-            print ("Got 3 for >>>: %s"%tmp)
-        elif jobDefs[0]==3:
-            #Run custom script after downloading
-            print ("Got 3 for >>>: %s"%tmp)
-            
-        return "ReturnValue"
-
-    def cleanUpDownload(self,path,filename):
         """
-        Extracts the zipfile and re-structures the directory structure as asked.
-        This function can be made better.
-        This is the dumbest thing, cannot extract each file to custom location, 
-        it has to be in the same internal directory structure as the zip file.
-        """
-        #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
-        if os.path.isfile(os.path.join(path,filename)):
-            #Need a try except block for the zipfile stuff
-            zipFileName=zipfile.ZipFile(os.path.join(path,filename))
-            zipFileName.extractall(path)
-            allFiles=zipFileName.namelist()
-    #        for zfile in zipFileName.namelist():
-    #            zipFileName.extract(zfile,path)
-            zipFileName.close()
-            
-            os.remove(os.path.join(path,filename))
-            for aFile in allFiles:
-                fPath=aFile.split('/')
-                os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename+'-'+fPath[-1]))
-            try:
-                # A bit of a risky thing to do. But o well. :)
-                shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0]),ignore_errors=True)
-            except os.error as e:
-                # Ignoring Errors, so this is kind of useless
-                if e.errno !=errno.EEXIST:
-                    raise
+        print("Going in run_blocking_tasks")
+        ev_loop=asyncio.get_event_loop()
+        blocking_tasks = [
+                    #ev_loop.run_in_executor(executor,self.downloadRequest,i) #When using the function/s from the same class
+                    ev_loop.run_in_executor(executor,downloadRequest,*[self.host,self.uname,self.passwd,i])
+                    for i in jobList
+                ]
+        completed,pending = await asyncio.wait(blocking_tasks)
+        results=[t.result() for t in completed]
+        print('Results: {!r}'.format(results))
+        
+        print('Finishing')
+        
+#There is a slight performance gain when the following two commented out functions are separeted from the QT Class, since they can now be run on a separete (sub)thread
+#    def downloadRequest(self,jobDefs): #To run this with download_async make it async (i.e. async def downloadRequest(blah,blah))
+#        """
+#        Helper function for download_clicked. Download the files here
+#        """
+#        tmp=','.join(str(e) for e in jobDefs)
+#        
+#        #items in jobDefs - 0: Download Format
+#        #                 - 1: Download directory
+#        #                 - 2: DOwnload filename
+#        #                 - 3: main resource URI 
+#        #                 - 4: download structure
+#        #                 - 5: Counter
+#        if jobDefs[0]==1:
+#            #Direct download no conversion
+#            print ("Got 1 for >>>: %s"%tmp)
+#            
+#            #Make directories first
+#            self.makeDirsIfNotExist(jobDefs[1])
+#            # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
+#            # Compared it to downloading each file one at a time, and it is considerably slower.
+#            if self.XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
+#                self.cleanUpDownload(jobDefs[1],jobDefs[2])
+#            
+#        elif jobDefs[0]==2:
+#            #Converting to AFNI after downloading
+#            print ("Got 2 for >>>: %s"%tmp)
+#            
+#        elif jobDefs[0]==3:
+#            #Converting to NIFTI after downloading
+#            print ("Got 3 for >>>: %s"%tmp)
+#        elif jobDefs[0]==3:
+#            #Run custom script after downloading
+#            print ("Got 3 for >>>: %s"%tmp)
+#            
+#        return "ReturnValue"
+#
+#    def cleanUpDownload(self,path,filename):
+#        """
+#        Extracts the zipfile and re-structures the directory structure as asked.
+#        This function can be made better.
+#        This is the dumbest thing, cannot extract each file to custom location, 
+#        it has to be in the same internal directory structure as the zip file.
+#        """
+#        #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
+#        if os.path.isfile(os.path.join(path,filename)):
+#            #Need a try except block for the zipfile stuff
+#            zipFileName=zipfile.ZipFile(os.path.join(path,filename))
+#            zipFileName.extractall(path)
+#            allFiles=zipFileName.namelist()
+#    #        for zfile in zipFileName.namelist():
+#    #            zipFileName.extract(zfile,path)
+#            zipFileName.close()
+#            
+#            #Adding try block here doesn't seem necessary , as yet. 
+#            os.remove(os.path.join(path,filename))
+#            
+#            #Flag to check if all files moved successfully
+#            f_renamed=True
+#            for aFile in allFiles:
+#                fPath=aFile.split('/')
+#                try:
+#                    os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename+'-'+fPath[-1]))
+#                except os.error as e:
+#                    f_renamed=False
+#                    raise #Do logging instead of raising
+#                    
+#            if f_renamed: #If all files successfully moved, then delete the directory
+#                try:
+#                    # A bit of a risky thing to do. But o well. :)
+#                    shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0]),ignore_errors=True)
+#                except os.error as e:
+#                    # Ignoring Errors, so this is kind of useless
+#                    if e.errno !=errno.EEXIST:
+#                        raise #Do logging instead of raising
 
     def identify_duplicate_paths(self):
         """
@@ -725,7 +759,7 @@ class StartQT(QtWidgets.QMainWindow):
                     new_kid.setFlags(new_kid.flags() | QtCore.Qt.ItemIsUserCheckable)
                     new_kid.setCheckState(0,QtCore.Qt.Unchecked)
                     new_kid.setText(0,res['Name'])
-                    new_kid.setStatusTip(0,sess)
+                    new_kid.setToolTip(0,sess)
                 flag=1
                 break
         if flag==0:
@@ -738,7 +772,8 @@ class StartQT(QtWidgets.QMainWindow):
                 child.setFlags(child.flags() | QtCore.Qt.ItemIsUserCheckable)
                 child.setCheckState(0,QtCore.Qt.Unchecked)
                 child.setText(0,res['Name'])
-                child.setStatusTip(0,sess)
+                child.setToolTip(0,sess)
+                
 
     def add_to_scan_tree(self,subj,sess,scan_id,scan_type):  # args are Non-Xnat terms/(labels not IDs)
         """
@@ -999,10 +1034,6 @@ class StartQT(QtWidgets.QMainWindow):
                         groupbox = QtWidgets.QGroupBox('%s' % scan_name)
                         groupbox.setCheckable(True)
                         grouplayout = QtWidgets.QVBoxLayout()
-                        #grouptext = QtGui.QTextEdit()
-#                        chkbox=QtGui.QCheckBox("Select")
-#                        chkbox.setFixedWidth(400)
-#                        chkbox.setFixedHeight(30)
                         if system()=='Windows':
                             txtpath=QtWidgets.QLineEdit(self.sysConfig['down-init']['pathprefix-win'])
                         else:
@@ -1012,19 +1043,10 @@ class StartQT(QtWidgets.QMainWindow):
                         txtfname=QtWidgets.QLineEdit(self.sysConfig['down-init']['fileprefix'])
                         txtfname.setFixedWidth(150)
                         txtfname.setFixedHeight(20)
-#                        chk_slice=QtGui.QCheckBox("Ignore Slice Chk")
-#                        chk_slice.setFixedHeight(30)
-#                        chk_db=QtGui.QCheckBox("Ignore Database Chk")
-#                        chk_db.setFixedWidth(150)
-#                        chk_db.setFixedHeight(30)
-                        
-                        
+                      
                         hbox1=QtWidgets.QHBoxLayout()
                         hbox2=QtWidgets.QHBoxLayout()
                         
-                        #hbox1.addWidget(chkbox)
-#                        hbox1.addWidget(chk_slice)
-#                        hbox1.addWidget(chk_db)
                         hbox2.addWidget(txtpath)
                         hbox2.addWidget(txtfname)
                         
@@ -1034,7 +1056,6 @@ class StartQT(QtWidgets.QMainWindow):
                         vs_lay.addWidget(groupbox)
                         self.main_ui.grp_allScans.append(groupbox)
                 
-
         layout=QtWidgets.QHBoxLayout()
         layout.addWidget(vs_scroll)
         self.main_ui.grp_path.setLayout(layout)
@@ -1286,16 +1307,16 @@ class StartQT(QtWidgets.QMainWindow):
         """
         When the User Clicks the SignIn Button
         """
-        host=str(self.main_ui.edt_host.text())
-        uname=str(self.main_ui.edt_username.text())
-        passwd=str(self.main_ui.edt_pwd.text())
+        self.host=str(self.main_ui.edt_host.text())
+        self.uname=str(self.main_ui.edt_username.text())
+        self.passwd=str(self.main_ui.edt_pwd.text())
         #print ("Signing In")
         #print("Host:"+host)
-        if host=="" or uname=="" or passwd=="":
+        if self.host=="" or self.uname=="" or self.passwd=="":
             self.PopupDlg("Please Enter all information !!")
         else:
             #print("Success")
-            self.XConn=XnatRest(host,uname,passwd,False)
+            self.XConn=XnatRest(self.host,self.uname,self.passwd,False)
             self.projects=self.XConn.getProjects()
             if self.projects==0:
                 self.PopupDlg("Something doesn't seem right. Check your Username/Password/Hostname")
@@ -1823,6 +1844,90 @@ class MyPopupDlg(QtWidgets.QDialog):
         btn.accepted.connect(self.accept)
         layout.addWidget(lbl)
         layout.addWidget(btn)
+
+
+def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async make it async (i.e. async def downloadRequest(blah,blah))
+    """
+    Helper function for download_clicked. Download the files here
+    """
+    tmp=','.join(str(e) for e in jobDefs)
+    
+    #items in jobDefs - 0: Download Format
+    #                 - 1: Download directory
+    #                 - 2: DOwnload filename
+    #                 - 3: main resource URI 
+    #                 - 4: download structure
+    #                 - 5: Counter
+    if jobDefs[0]==1:
+        #Direct download no conversion
+        print ("Got 1 for >>>: %s"%tmp)
+        #Make directories first
+        if not os.path.exists(jobDefs[1]):
+            try:
+                os.makedirs(jobDefs[1])
+            except os.error as e:
+                if e.errno !=errno.EEXIST:
+                    raise
+        
+        # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
+        # Compared it to downloading each file one at a time, and it is considerably slower.
+        #Creating new connection object.
+        XConn=XnatRest(host,uname,passwd,False)
+        if XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
+            cleanUpDownload(jobDefs[1],jobDefs[2])
+        
+    elif jobDefs[0]==2:
+        #Converting to AFNI after downloading
+        print ("Got 2 for >>>: %s"%tmp)
+        
+    elif jobDefs[0]==3:
+        #Converting to NIFTI after downloading
+        print ("Got 3 for >>>: %s"%tmp)
+    elif jobDefs[0]==3:
+        #Run custom script after downloading
+        print ("Got 3 for >>>: %s"%tmp)
+        
+    return "ReturnValue"
+
+def cleanUpDownload(path,filename):
+    """
+    Extracts the zipfile and re-structures the directory structure as asked.
+    This function can be made better.
+    This is the dumbest thing, cannot extract each file to custom location, 
+    it has to be in the same internal directory structure as the zip file.
+    """
+    #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
+    if os.path.isfile(os.path.join(path,filename)):
+        #Need a try except block for the zipfile stuff
+        zipFileName=zipfile.ZipFile(os.path.join(path,filename))
+        zipFileName.extractall(path)
+        allFiles=zipFileName.namelist()
+#        for zfile in zipFileName.namelist():
+#            zipFileName.extract(zfile,path)
+        zipFileName.close()
+        
+        #Adding try block here doesn't seem necessary , as yet. 
+        os.remove(os.path.join(path,filename))
+        
+        #Flag to check if all files moved successfully
+        f_renamed=True
+        for aFile in allFiles:
+            fPath=aFile.split('/')
+            try:
+                os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename+'-'+fPath[-1]))
+            except os.error as e:
+                f_renamed=False
+                raise #Do logging instead of raising
+                
+        if f_renamed: #If all files successfully moved, then delete the directory
+            try:
+                # A bit of a risky thing to do. But o well. :)
+                shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0]),ignore_errors=True)
+            except os.error as e:
+                # Ignoring Errors, so this is kind of useless
+                if e.errno !=errno.EEXIST:
+                    raise #Do logging instead of raising
+
 
 if __name__ == "__main__":
     

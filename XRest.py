@@ -10,7 +10,7 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-CHUNKSIZE=512
+CHUNKSIZE=2048 #After trying 512,1024,2048,4096, 8192 - There is no considerable impact in speed after 2048
 
 class XnatRest:
     def __init__(self,host,user,passwd,verify=True):
@@ -287,31 +287,40 @@ class XnatRest:
     
     def getZip(self,url,fs_path,fs_fname):
         """
-        Hello
+        Works for scan level
         """
-        tail="/files/?format=zip"
+        tail="/files?format=zip"
         try:
-            print("URL:  "+self.host+url+tail)
+            #print("URL:  "+self.host+url+tail)
             response = self.intf.get(self.host+url+tail,stream=True)
+            #print (response.status_code)
             if response.status_code !=200:
-                print("Something wrong yo")
-            # Get the content length if available
-            content_length = response.headers.get('Content-Length', -1)
-            if isinstance(content_length,str):
-                content_length=int(content_length)
-            fd= open(os.path.join(fs_path,fs_fname),"wb")
-            #Use bytes_read for progress bar
-            #bytes_read=0
-            for chunk in response.iter_content(chunk_size=CHUNKSIZE):
-                if chunk: #Filter out keep-alive new chunks
-                    if chunk[0] == '<' and chunk.startswith(('<!DOCTYPE', '<html>')):#bytes_read==0 and chunk[0] == '<' and chunk.startswith(('<!DOCTYPE', '<html>')):
-                        print("Invalid response from XNAT")
-                    #bytes_read += len(chunk)
-                    fd.write(chunk)
-            fd.close()
+                #Return something meaningful so the program knows.
+                print("Oops Error Code: %s"%response.status_code)
+                #print(url)
+                return False
+            else:
+                # Get the content length if available
+                #content_length = response.headers.get('Content-Length', -1)
+                #if isinstance(content_length,str):
+                #    content_length=int(content_length)
+                fd= open(os.path.join(fs_path,fs_fname),"wb")
+                #Use bytes_read for progress bar
+                #bytes_read=0
+                for chunk in response.iter_content(chunk_size=CHUNKSIZE):
+                    if chunk: #Filter out keep-alive new chunks
+                        if chunk[0] == '<' and chunk.startswith(('<!DOCTYPE', '<html>')):#bytes_read==0 and chunk[0] == '<' and chunk.startswith(('<!DOCTYPE', '<html>')):
+                            print("Invalid response from XNAT")
+                        #bytes_read += len(chunk)
+                        fd.write(chunk)
+                fd.close()
+                return True
             
-        except :
-            pass
+        except Exception as inst:
+            print(inst)
+            return False
+#        except :
+#           print("Something went wrong")
 
     def _put(self,url,**kwargs):
         """

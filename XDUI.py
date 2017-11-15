@@ -25,6 +25,8 @@ from collections import defaultdict
 from SwarmSubmitter import SwarmJob
 from time import sleep
 import asyncio
+import zipfile
+import shutil
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -177,6 +179,10 @@ class StartQT(QtWidgets.QMainWindow):
         # Lists and Dictionaries
         self.li_subs=[] #List of subjects as received
         self.dict_checked_all={} #Dictionary of selected subjects
+        #dict_checked_all[SubjectId][SessionLabel][SessionShortLabel-Redundant][Unselected-scans=0][ScanId]=ScanName
+        #dict_checked_all[SubjectId][SessionLabel][SessionShortLabel-Redundant][Selected-scans  =1][ScanId]=ScanName
+        #dict_checked_all[SubjectId][SessionLabel][SessionShortLabel-Redundant][Session-Resources UnSelected =2][Resource-Dir-Label]=ResourceName
+        #dict_checked_all[SubjectId][SessionLabel][SessionShortLabel-Redundant][Session-Resources Selected =3][Resource-Dir-Label]=ResourceName
         
         self.tree_all={} # A dict of dict of dict for everything
 
@@ -236,24 +242,36 @@ class StartQT(QtWidgets.QMainWindow):
                     self.disable_all()
                     #MySwarm=SwarmJob(self.XConn,20)
                     #Check if multiple resource types are checked.
-                    if len(self.getCheckedResourceLabels())>1:
-                        pass
+                    resources=self.getCheckedResourceLabels()
+                        
                     aList=[]
+                    #items in aList - 0: Download Format
+                    #               - 1: Download directory
+                    #               - 2: DOwnload filename
+                    #               - 3: main URI
+                    #               - 4: download structure
+                    #               - 5: Counter
+                        
                     for i in range(self.main_ui.lst_cmd.count()):
-                        #MySwarm.addJob(self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
-                        #               self.main_ui.lst_filename.item(i).text(),self.main_ui.lst_dest_pick.item(i).toolTip(),
-                        #               self.main_ui.lst_cmd.item(i).text(),str(i+1))
-                        aList.append([self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
-                                       self.main_ui.lst_filename.item(i).text(),self.main_ui.lst_dest_pick.item(i).toolTip(),
+                        if len(resources)==1:
+                            aList.append([self.d_format,self.main_ui.lst_dest_pick.item(i).text(),
+                                       self.main_ui.lst_filename.item(i).text(),
+                                       self.main_ui.lst_dest_pick.item(i).toolTip()+"/resources/"+resources[0],
                                        self.main_ui.lst_cmd.item(i).text(),str(i+1)])
+                        else:
+                            #Create Resources directory and add resource to URI, for each resource
+                            for res in resources:
+                                aList.append([self.d_format,os.path.join(self.main_ui.lst_dest_pick.item(i).text(),res),
+                                       self.main_ui.lst_filename.item(i).text(),
+                                       self.main_ui.lst_dest_pick.item(i).toolTip()+"/resources/"+res,
+                                       self.main_ui.lst_cmd.item(i).text(),str(i+1)])
+                            
                     #MySwarm.RunSwarm()
+                    #Creates an asynchronous loop, and downloads the things (asynchronously)
                     event_loop=asyncio.get_event_loop()
                     try:
-                        print("Starting the Real Download")
                         event_loop.run_until_complete(self.download_async(aList))
-                        print("The loop finished")
                     finally:
-                        print("Completed it")
                         event_loop.close()
                 
 
@@ -265,14 +283,72 @@ class StartQT(QtWidgets.QMainWindow):
         dRequests=[self.downloadRequest(i) for i in jobList]
         for nxt2finish in asyncio.as_completed(dRequests):
             return_val=await nxt2finish
+        
 
     async def downloadRequest(self,jobDefs):
         """
         Helper function for download_clicked. Download the files here
         """
         tmp=','.join(str(e) for e in jobDefs)
-        print ("Downloading: %s"%tmp)
+        
+        #items in jobDefs - 0: Download Format
+        #                 - 1: Download directory
+        #                 - 2: DOwnload filename
+        #                 - 3: main resource URI 
+        #                 - 4: download structure
+        #                 - 5: Counter
+        if jobDefs[0]==1:
+            #Direct download no conversion
+            print ("Got 1 for >>>: %s"%tmp)
+            
+            #Make directories first
+            self.makeDirsIfNotExist(jobDefs[1])
+            # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
+            # Compared it to downloading each file one at a time, and it is considerably slower.
+            if self.XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
+                self.cleanUpDownload(jobDefs[1],jobDefs[2])
+            
+        elif jobDefs[0]==2:
+            #Converting to AFNI after downloading
+            print ("Got 2 for >>>: %s"%tmp)
+            
+        elif jobDefs[0]==3:
+            #Converting to NIFTI after downloading
+            print ("Got 3 for >>>: %s"%tmp)
+        elif jobDefs[0]==3:
+            #Run custom script after downloading
+            print ("Got 3 for >>>: %s"%tmp)
+            
         return "ReturnValue"
+
+    def cleanUpDownload(self,path,filename):
+        """
+        Extracts the zipfile and re-structures the directory structure as asked.
+        This function can be made better.
+        This is the dumbest thing, cannot extract each file to custom location, 
+        it has to be in the same internal directory structure as the zip file.
+        """
+        #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
+        if os.path.isfile(os.path.join(path,filename)):
+            #Need a try except block for the zipfile stuff
+            zipFileName=zipfile.ZipFile(os.path.join(path,filename))
+            zipFileName.extractall(path)
+            allFiles=zipFileName.namelist()
+    #        for zfile in zipFileName.namelist():
+    #            zipFileName.extract(zfile,path)
+            zipFileName.close()
+            
+            os.remove(os.path.join(path,filename))
+            for aFile in allFiles:
+                fPath=aFile.split('/')
+                os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename+'-'+fPath[-1]))
+            try:
+                # A bit of a risky thing to do. But o well. :)
+                shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0]),ignore_errors=True)
+            except os.error as e:
+                # Ignoring Errors, so this is kind of useless
+                if e.errno !=errno.EEXIST:
+                    raise
 
     def identify_duplicate_paths(self):
         """
@@ -426,34 +502,86 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.grp_sess_select.setEnabled(False)
         self.main_ui.grp_subj_select.setEnabled(False)
-#        if self.main_ui.
-        if item.checkState(column) == QtCore.Qt.Checked:  #Checked
-            for child in range(item.childCount()):
-                sess_det=self.lookup_session(item.child(child).text(0))
-                del_keys=[]
-                for k,v in self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].items():
-                    if item.text(0)==v:
-                        del_keys.append(k)
-                        #break  #There are scans with same name in some cases.
-                #Pop from dict[0] and put it in dict[1] . 0=Unchecked , 1=Checked
-                #self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1]={x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys}
-                self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys})
-        elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
-            for child in range(item.childCount()):
-                sess_det=self.lookup_session(item.child(child).text(0))
-                del_keys=[]
-                for k,v in self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].items():
-                    if item.text(0)==v:
-                        del_keys.append(k)
-                        #break  #There are scans with same name in some cases.
-                #Pop from dict[0] and put it in dict[1] . 0=Unchecked , 1=Checked
+        if self.main_ui.rb_subj_sess.isChecked() and self.main_ui.rb_sess_scans.isChecked():
+            """
+            If Subject + Session + Scan
+            """
+            if item.checkState(column) == QtCore.Qt.Checked:  #Checked
+                for child in range(item.childCount()):
+                    sess_det=self.lookup_session(item.child(child).text(0))
+                    del_keys=[]
+                    for k,v in self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].items():
+                        if item.text(0)==v:
+                            del_keys.append(k)
+                            #break  #There are scans with same name in some cases.
+                    #Pop from dict[0] and put it in dict[1] . 0=Unchecked , 1=Checked
+                    #self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1]={x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys}
+                    self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys})
+            elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
+                for child in range(item.childCount()):
+                    sess_det=self.lookup_session(item.child(child).text(0))
+                    del_keys=[]
+                    for k,v in self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].items():
+                        if item.text(0)==v:
+                            del_keys.append(k)
+                            #break  #There are scans with same name in some cases.
+                    #Pop from dict[0] and put it in dict[1] . 0=Unchecked , 1=Checked
+                    self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].pop(x, None) for x in del_keys})
+    
+            else: #Will not execute
+                pass #QtCore.Qt.PartiallyChekced
                 
-                #self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0]={x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].pop(x, None) for x in del_keys}
-                self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].pop(x, None) for x in del_keys})
-
-        else: #Will not execute
-            pass #QtCore.Qt.PartiallyChekced
-        
+            #print (self.dict_checked_all)
+            
+        elif self.main_ui.rb_subj_sess.isChecked() and self.main_ui.rb_sess_res.isChecked():
+            """
+            Subject + Session -> Resources. No Scans
+            """
+            if item.checkState(column) == QtCore.Qt.Checked:  #Checked
+                #print (item.text(0)+ " Checked")
+                self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
+                self.main_ui.lbl_status.setText(' Getting data....WAIT')
+                if item.childCount()==0:
+                    #sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
+                    self.main_ui.pb_inter.setValue(10)
+                    #self.handle_sess_Chk(sess_det[0],item.text(0))
+                    self.main_ui.pb_inter.setValue(100)
+                else:
+                    child_cnt=item.childCount()
+                    incr=int(100/child_cnt)
+                    tot=0
+                    for child in range(child_cnt):
+                        tot=tot+incr
+                        self.main_ui.pb_inter.setValue(tot)
+                        #sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
+                        #self.handle_sess_Chk(sess_det[0],item.child(child).text(0))
+            elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
+                #print (item.text(0)+" Unchecked")
+                if item.childCount()==0:
+                    #sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
+                    self.main_ui.pb_inter.setValue(10)
+                    #self.handle_sess_UnChk(sess_det[0],item.text(0))
+                    self.main_ui.pb_inter.setValue(100)
+                else:
+                    child_cnt=item.childCount()
+                    incr=int(100/child_cnt)
+                    tot=0
+                    for child in range(child_cnt):
+                        tot=tot+incr
+                        self.main_ui.pb_inter.setValue(tot)
+                        #sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
+                        #self.handle_sess_UnChk(sess_det[0],item.child(child).text(0))
+        elif self.main_ui.rb_subj_res.isChecked():
+            """
+            Subject -> Resources. No Session. No Scan.
+            """
+            print("This should NEVER run")
+        else :
+            print("This should NEVER run either")
+            
+        self.main_ui.pb_inter.setValue(100)
+        self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;")) # f79f99 - Red
+        self.main_ui.lbl_status.setText('    Ready')
 
     
     def handle_sess(self, item, column):
@@ -1181,7 +1309,7 @@ class StartQT(QtWidgets.QMainWindow):
                 self.main_ui.cmb_project.addItems(self.projects)
                 
             self.main_ui.edt_pwd.setText("")
-            
+            #/data/projects/TEST/subjects/1/experiments/MR1/scans/1/resources/DICOM/files
 
     def scan_quality_checked(self):
         """
@@ -1580,12 +1708,20 @@ class StartQT(QtWidgets.QMainWindow):
         xcache=''
         for dirname in self.sysConfig['sys-init']['cache-location']:
             xcache=os.path.join(xcache,dirname)
-        if not os.path.exists(xcache):
+        self.makeDirsIfNotExist(xcache)
+                    
+    def makeDirsIfNotExist(self,path):
+        """
+        Make directories recursively if they dont exist
+        Can add more permission checking exceptions and popups here.
+        """
+        if not os.path.exists(path):
             try:
-                os.makedirs(xcache)
+                os.makedirs(path)
             except os.error as e:
                 if e.errno !=errno.EEXIST:
                     raise
+                    
                     
     def loadUserConfig(self):
         """

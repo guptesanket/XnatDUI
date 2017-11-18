@@ -9,10 +9,10 @@
 
 sys-init:
   host: "https://cerebra.nida.nih.gov"
-  #parallel processing with multi-threading(T) or multi-processing (P) - Two possible values T or P
+  #parallel processing with multi-threading(T) or multi-processing (P) - Two possible values T or P. P - uses spreads it across multiple cores.
   # P uses multiple CPU cores - more compute intensive. T - uses multi threads. 
   parallel: "P"
-  #Maximum number of parallel threads/processes. Minimum value: 2. Giving it 1, it won't execute the child thread/process
+  #Maximum number of parallel threads/cores. Minimum value: 2. Giving it 1, it won't execute the child thread/process
   max-parallel: 8
   #Projects to remove from dropdown box
   proj2rm:

@@ -239,7 +239,9 @@ class StartQT(QtWidgets.QMainWindow):
             if len(self.getCheckedResourceLabels())>1:
                 D_Flag=self.DownloadWarningMultipleResources(self.getCheckedResourceLabels())
             if D_Flag==1024:
-                if self.DownloadMsgBox(self.d_format)==1024: 
+                if self.DownloadMsgBox(self.d_format)==1024:
+                    #self.main_ui.tab_logger.setCurrentIndex(1)
+                    self.PopupDlg("Hello Test")
                     self.disable_all()
                     #MySwarm=SwarmJob(self.XConn,20)
                     #Check if multiple resource types are checked.
@@ -274,8 +276,11 @@ class StartQT(QtWidgets.QMainWindow):
 #                    finally:
 #                        event_loop.close()
 
-                    #Create an asynchronous loop and run it in an executor, that creates a separate thread/process                    
-                    executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.sysConfig['sys-init']['max-parallel'],)
+                    #Create an asynchronous loop and run it in an executor, that creates a separate thread/process
+                    if self.sysConfig['sys-init']['parallel']=='P':
+                        executor = concurrent.futures.ProcessPoolExecutor(max_workers=self.sysConfig['sys-init']['max-parallel'],)
+                    else:
+                        executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.sysConfig['sys-init']['max-parallel'],)
                     event_loop=asyncio.get_event_loop()
                     try:
                         event_loop.run_until_complete(self.run_blocking_tasks(executor,aList))
@@ -304,9 +309,9 @@ class StartQT(QtWidgets.QMainWindow):
                 ]
         completed,pending = await asyncio.wait(blocking_tasks)
         results=[t.result() for t in completed]
-        print('Results: {!r}'.format(results))
+        print('Results: {!r}'.format(results)) #return from the doenloadRequest function
         
-        print('Finishing')
+        print('All Downloads Finished')
         
 #There is a slight performance gain when the following two commented out functions are separeted from the QT Class, since they can now be run on a separete (sub)thread
 #    def downloadRequest(self,jobDefs): #To run this with download_async make it async (i.e. async def downloadRequest(blah,blah))
@@ -907,15 +912,16 @@ class StartQT(QtWidgets.QMainWindow):
                     tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
                     #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
                     self.tree_all[str(item_sub.text())]={}
-                    inter=int(100/len(tmp_exp_list))
-                    tot=0
-                    for exp in tmp_exp_list:
-                        tot=tot+inter
-                        self.main_ui.pb_inter.setValue(tot)
-                        if exp['xsiType']=='xnat:mrSessionData': #Getting experiments only of the type mrSessionData
-                            self.tree_all[str(item_sub.text())][exp['label']]={}
-                            self.tree_all[str(item_sub.text())][exp['label']]['exp']=exp['ID'] #Keeping only the ID  . No use for other fields for now.
-                            self.tree_all[str(item_sub.text())][exp['label']]['strip']=self.strip_sub_id(str(item_sub.text()),exp['label'])
+                    if len(tmp_exp_list)!=0:  #To prevent divide by zero error
+                        inter=int(100/len(tmp_exp_list))
+                        tot=0
+                        for exp in tmp_exp_list:
+                            tot=tot+inter
+                            self.main_ui.pb_inter.setValue(tot)
+                            if exp['xsiType']=='xnat:mrSessionData': #Getting experiments only of the type mrSessionData
+                                self.tree_all[str(item_sub.text())][exp['label']]={}
+                                self.tree_all[str(item_sub.text())][exp['label']]['exp']=exp['ID'] #Keeping only the ID  . No use for other fields for now.
+                                self.tree_all[str(item_sub.text())][exp['label']]['strip']=self.strip_sub_id(str(item_sub.text()),exp['label'])
                 self.main_ui.pb_inter.setValue(95)
                 self.dict_checked_all[str(item_sub.text())]={}
                 for sess in self.tree_all[str(item_sub.text())]:                
@@ -1644,6 +1650,7 @@ class StartQT(QtWidgets.QMainWindow):
         
         
         
+        
     def strip_sub_id(self,subj,sess):
         return str(str(sess).replace(str(subj),"").strip('-').strip('_').strip('(').strip(')'))
     def strip_tail(self,str_strip):
@@ -1850,7 +1857,7 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
     """
     Helper function for download_clicked. Download the files here
     """
-    tmp=','.join(str(e) for e in jobDefs)
+    #tmp=','.join(str(e) for e in jobDefs)
     
     #items in jobDefs - 0: Download Format
     #                 - 1: Download directory
@@ -1860,7 +1867,7 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
     #                 - 5: Counter
     if jobDefs[0]==1:
         #Direct download no conversion
-        print ("Got 1 for >>>: %s"%tmp)
+        print ("Now Getting >>>: %s"%jobDefs[1])
         #Make directories first
         if not os.path.exists(jobDefs[1]):
             try:
@@ -1875,19 +1882,26 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
         XConn=XnatRest(host,uname,passwd,False)
         if XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
             cleanUpDownload(jobDefs[1],jobDefs[2])
+            return "Success: "+jobDefs[3]
+        else:
+            return "Failed GET: "+jobDefs[3] #Will fail if 404 in GET (or any issues with GET)
+        
         
     elif jobDefs[0]==2:
         #Converting to AFNI after downloading
-        print ("Got 2 for >>>: %s"%tmp)
+        print ("Got 2 for >>>: %s"%jobDefs[1])
+        return "Success: "+jobDefs[3]
         
     elif jobDefs[0]==3:
         #Converting to NIFTI after downloading
-        print ("Got 3 for >>>: %s"%tmp)
+        print ("Got 3 for >>>: %s"%jobDefs[1])
+        return "Success: "+jobDefs[3]
     elif jobDefs[0]==3:
         #Run custom script after downloading
-        print ("Got 3 for >>>: %s"%tmp)
+        print ("Got 3 for >>>: %s"%jobDefs[1])
+        return "Success: "+jobDefs[3]
         
-    return "ReturnValue"
+    return "Failed: "+jobDefs[3]
 
 def cleanUpDownload(path,filename):
     """

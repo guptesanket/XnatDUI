@@ -22,29 +22,37 @@ import subprocess
 from XRest import XnatRest
 import operator
 from collections import defaultdict
-from SwarmSubmitter import SwarmJob
-from time import sleep
+#from SwarmSubmitter import SwarmJob
+#from time import sleep
 import asyncio
 import zipfile
 import shutil
 import concurrent.futures
+import logging
+from time import strftime
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
 #Pre-set ComboBox translations for Path Creation screen
 CMBPATH=['PROJ','SUBJ','SESS','SCAN','SCANID']
 
+detail_logger = logging.getLogger('Xnat-Download-Upload-UI')
+hdlr = None
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+#Just a string used in downloading scans - to convert from dcm to other formats
 if system()=='Windows':
     CUST_PROG_CONV='<Custom Program> -LocOfDcmFiles %Output-Dir%\* -CustomFileExtension %File-Name% -CustomFileDOwnloadLocation %Output-Dir%\Custom'
 else:
     CUST_PROG_CONV='<Custom Program> -LocOfDcmFiles %Output-Dir%/* -CustomFileExtension %File-Name% -CustomFileDOwnloadLocation %Output-Dir%/Custom'
 
+#Some systems have this error
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
     def _fromUtf8(s):
         return s
-
+#Preventing ENcding errors
 try:
     _encoding = QtWidgets.QApplication.UnicodeUTF8
     def _translate(context, text, disambig):
@@ -52,12 +60,13 @@ try:
 except AttributeError:
     def _translate(context, text, disambig):
         return QtWidgets.QApplication.translate(context, text, disambig)
-# Memoise function to speed up things
+    
+# Memoise function to speed up things. Kind of like cache to speed up lookup time
 def memoise(f):
     cache ={}
     return lambda *args: cache[args] if args in cache else cache.update({args: f(*args)}) or cache[args]
 
-
+#Main QT Class for the UI
 class StartQT(QtWidgets.QMainWindow):
     def __init__(self,parent=None):
         #Setting up the GUI
@@ -84,6 +93,10 @@ class StartQT(QtWidgets.QMainWindow):
         
         self.main_ui.cmb_project.currentIndexChanged.connect(self.index_proj_changed)
         
+        self.main_ui.btn_view_logs.clicked.connect(self.view_logs_clicked)
+        self.main_ui.rb_logs_short.setChecked(True)
+        self.main_ui.rb_logs_short.toggled.connect(self.logging_short)
+        self.main_ui.rb_logs_detailed.toggled.connect(self.logging_detailed)
         
        #Class Variables
         self.sysConfig=None
@@ -222,26 +235,36 @@ class StartQT(QtWidgets.QMainWindow):
         
         
         self.main_ui.grp_what.setEnabled(False)
-        self.main_ui.grp_download_method.setEnabled(False)
+        self.main_ui.grp_logging_info.setEnabled(False)
 
         self.page1_clicked() #Go to the first page.
+        
+        self.fl_download_started=False
         #self.testTable()
     
     def download_clicked(self):
         """
         When the final 'Download' button is clicked
         """
+        global detail_logger        
+        detail_logger.info('Download Started')
+        if self.fl_download_started: #This may never run. The function blocks the UI. Download won't get clicked twice.
+            return self.PopupDlg("Download in Progress. Please be patient. Don't click Twice")
         self.identify_duplicate_paths()
         if self.dict_duplicate_paths:
             self.PopupDlg("Please Remove Duplicate Paths !!\nCheck same colored rows")
+            detail_logger.debug('Found Duplicate paths. Failed to Initiate Download')
         else:
             D_Flag=1024 #1024 = 0x00000400  , the message sent when OK is pressed
             if len(self.getCheckedResourceLabels())>1:
+                detail_logger.debug('Multiple Resource CheckBoxes selected. Making a separate Directories for each Resource')
                 D_Flag=self.DownloadWarningMultipleResources(self.getCheckedResourceLabels())
             if D_Flag==1024:
                 if self.DownloadMsgBox(self.d_format)==1024:
                     #self.main_ui.tab_logger.setCurrentIndex(1)
-                    self.PopupDlg("Hello Test")
+                    #self.PopupDlg("Hello Test")
+                    detail_logger.debug('All checks PASS. Starting Download')
+                    self.fl_download_started=True
                     self.disable_all()
                     #MySwarm=SwarmJob(self.XConn,20)
                     #Check if multiple resource types are checked.
@@ -278,40 +301,49 @@ class StartQT(QtWidgets.QMainWindow):
 
                     #Create an asynchronous loop and run it in an executor, that creates a separate thread/process
                     if self.sysConfig['sys-init']['parallel']=='P':
+                        detail_logger.debug('Running in Multi-Processing Mode')
                         executor = concurrent.futures.ProcessPoolExecutor(max_workers=self.sysConfig['sys-init']['max-parallel'],)
                     else:
+                        detail_logger.debug('Running in Multi-Threading Mode')
                         executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.sysConfig['sys-init']['max-parallel'],)
                     event_loop=asyncio.get_event_loop()
+                    detail_logger.debug('Retrieving Files Asynchronously......')
                     try:
                         event_loop.run_until_complete(self.run_blocking_tasks(executor,aList))
                     finally:
                         event_loop.close()
 
-#    async def download_async(self,jobList):
-#        """
-#        A helper function for download_clicked
-#        """
-#        #print("Going in the Download_Async helper")
-#        dRequests=[self.downloadRequest(i) for i in jobList]
-#        for nxt2finish in asyncio.as_completed(dRequests):
-#            return_val=await nxt2finish
         
     async def run_blocking_tasks(self,executor,jobList): #Replacing download_async
         """
         
         """
-        print("Going in run_blocking_tasks")
+        global detail_logger
+        #print("Going in run_blocking_tasks")
         ev_loop=asyncio.get_event_loop()
         blocking_tasks = [
                     #ev_loop.run_in_executor(executor,self.downloadRequest,i) #When using the function/s from the same class
                     ev_loop.run_in_executor(executor,downloadRequest,*[self.host,self.uname,self.passwd,i])
                     for i in jobList
-                ]
-        completed,pending = await asyncio.wait(blocking_tasks)
-        results=[t.result() for t in completed]
-        print('Results: {!r}'.format(results)) #return from the doenloadRequest function
         
-        print('All Downloads Finished')
+        ]
+        
+        #To get return from each finished download
+#        for task in asyncio.as_completed(blocking_tasks):
+#            print("%s" % await task)
+        #To get return from each finished download
+#        for i,task in enumerate(asyncio.as_completed(blocking_tasks)):
+#            print("%s" % await task)
+#            print("Done Task Number : %d"%i)
+            
+        #To get control only when finished
+        completed,pending = await asyncio.wait(blocking_tasks)
+        #results=[t.result() for t in completed]
+        #print('Results: {!r}'.format(results)) #return from the doenloadRequest function
+        
+        detail_logger.info('All Downloads finished')
+        self.PopupDlg("All Downloads Finished")
+        #print('All Downloads Finished')
         
 #There is a slight performance gain when the following two commented out functions are separeted from the QT Class, since they can now be run on a separete (sub)thread
 #    def downloadRequest(self,jobDefs): #To run this with download_async make it async (i.e. async def downloadRequest(blah,blah))
@@ -394,21 +426,26 @@ class StartQT(QtWidgets.QMainWindow):
         Checking if there are any duplicate paths in the step when selecting download paths
         """
         path_list=[]
+        global detail_logger
         for i in range(self.main_ui.lst_dest_pick.count()):
-            path_list.append(self.main_ui.lst_dest_pick.item(i).text()+'/'+self.main_ui.lst_filename.item(i).text())
+            path_list.append(os.path.join(self.main_ui.lst_dest_pick.item(i).text(),self.main_ui.lst_filename.item(i).text()))
             self.main_ui.lst_dest_pick.item(i).setBackground(QtGui.QColor("transparent"))
             self.main_ui.lst_filename.item(i).setBackground(QtGui.QColor("transparent"))
         self.dict_duplicate_paths.clear()
+        #Creating a list of Unique elements
         self.dict_duplicate_paths=defaultdict(list)
         for i,item in enumerate(path_list):
             self.dict_duplicate_paths[item].append(i)
-        self.dict_duplicate_paths = {k:v for k,v in self.dict_duplicate_paths.items() if len(v)>1}
-        #print(self.dict_duplicate_paths)
+        self.dict_duplicate_paths = {k:v for k,v in self.dict_duplicate_paths.items() if len(v)>1} #Reusing the dict, to keep only those paths that are duplicate
+        
         i=0
         for key,val in self.dict_duplicate_paths.items():
+            #For all items that are same, giving the same colors
+            detail_logger.debug('Found Duplicate Path : %s Repeated %d times'%(key,len(val)))
             for itm in val:
                 self.main_ui.lst_dest_pick.item(itm).setBackground(QtGui.QColor(self.colors[i]))
                 self.main_ui.lst_filename.item(itm).setBackground(QtGui.QColor(self.colors[i]))
+            #Reiterating through the same set of colors
             if (i+1)==len(self.colors):
                 i=0
             else:
@@ -541,11 +578,15 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.grp_sess_select.setEnabled(False)
         self.main_ui.grp_subj_select.setEnabled(False)
+        
+        global detail_logger
         if self.main_ui.rb_subj_sess.isChecked() and self.main_ui.rb_sess_scans.isChecked():
             """
             If Subject + Session + Scan
             """
+            
             if item.checkState(column) == QtCore.Qt.Checked:  #Checked
+                detail_logger.debug('Scan %s Ticked'%item.text(0))
                 for child in range(item.childCount()):
                     sess_det=self.lookup_session(item.child(child).text(0))
                     del_keys=[]
@@ -557,6 +598,7 @@ class StartQT(QtWidgets.QMainWindow):
                     #self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1]={x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys}
                     self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][1].update({x:self.dict_checked_all[str(sess_det[0])][str(item.child(child).text(0))][1][0].pop(x, None) for x in del_keys})
             elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
+                detail_logger.debug('Scan %s Unticked'%item.text(0))
                 for child in range(item.childCount()):
                     sess_det=self.lookup_session(item.child(child).text(0))
                     del_keys=[]
@@ -577,7 +619,7 @@ class StartQT(QtWidgets.QMainWindow):
             Subject + Session -> Resources. No Scans
             """
             if item.checkState(column) == QtCore.Qt.Checked:  #Checked
-                #print (item.text(0)+ " Checked")
+                detail_logger.debug('Scan %s Ticked'%item.text(0))
                 self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
                 self.main_ui.lbl_status.setText(' Getting data....WAIT')
                 if item.childCount()==0:
@@ -595,7 +637,7 @@ class StartQT(QtWidgets.QMainWindow):
                         #sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
                         #self.handle_sess_Chk(sess_det[0],item.child(child).text(0))
             elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
-                #print (item.text(0)+" Unchecked")
+                detail_logger.debug('Scan %s Unticked'%item.text(0))
                 if item.childCount()==0:
                     #sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
                     self.main_ui.pb_inter.setValue(10)
@@ -638,10 +680,13 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.tree_sessions.blockSignals(True)
         self.main_ui.pb_inter.setValue(0)
+        
+        global detail_logger
         if item.checkState(column) == QtCore.Qt.Checked:  #Checked
-            #print (item.text(0)+ " Checked")
+            detail_logger.debug('Session %s Ticked'%item.text(0))
             self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
             self.main_ui.lbl_status.setText(' Getting data....WAIT')
+            
             if item.childCount()==0:
                 sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
                 self.main_ui.pb_inter.setValue(10)
@@ -657,7 +702,7 @@ class StartQT(QtWidgets.QMainWindow):
                     sess_det= self.lookup_session(item.child(child).text(0))  #Get's subjID & scan details
                     self.handle_sess_Chk(sess_det[0],item.child(child).text(0))
         elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
-            #print (item.text(0)+" Unchecked")
+            detail_logger.debug('Session %s Unticked'%item.text(0))
             if item.childCount()==0:
                 sess_det =self.lookup_session(item.text(0)) #Get's subjID & scan details
                 self.main_ui.pb_inter.setValue(10)
@@ -884,7 +929,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page4=True
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
-
+        global detail_logger
         if self.fl_subjects_selection==1: #If "Resources" is selected
             #For Resources
             self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
@@ -907,6 +952,7 @@ class StartQT(QtWidgets.QMainWindow):
                 self.main_ui.pb_inter.setValue(0)
                 self.fl_refresh_page5=True
                 self.fl_Subj_checked=True
+                detail_logger.debug('Subject %s Ticked'%item_sub.text())
                 if str(item_sub.text()) not in self.tree_all:
                     self.main_ui.pb_inter.setValue(10)
                     tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
@@ -952,7 +998,7 @@ class StartQT(QtWidgets.QMainWindow):
                 self.main_ui.pb_inter.setValue(100)
                                 
             else:
-            
+                detail_logger.debug('Subject %s Unticked'%item_sub.text())
                 sub=self.dict_checked_all.pop(str(item_sub.text()),None)
                 
                 #print sub
@@ -1273,12 +1319,16 @@ class StartQT(QtWidgets.QMainWindow):
 
     def page1_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(0)
+        global detail_logger
+        detail_logger.debug('Change to Page: Selection')
         if self.fl_refresh_page1:
             self.fl_refresh_page1=False
             self.refresh_page1()
         
     def page2_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(1)
+        global detail_logger
+        detail_logger.debug('Change to Page: Destination')
         self.fl_refresh_page3=True
         if self.fl_refresh_page2:
             self.fl_refresh_page2=False
@@ -1286,27 +1336,40 @@ class StartQT(QtWidgets.QMainWindow):
         
     def page3_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(2)
+        global detail_logger
+        detail_logger.debug('Change to Page: Download Scans')
         if self.fl_refresh_page3:
             self.fl_refresh_page3=False
             self.refresh_page3()
         
     def page4_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(3)
+        global detail_logger
+        detail_logger.debug('Change to Page: Upload')
         if self.fl_refresh_page4:
             self.fl_refresh_page4=False
             self.refresh_page4()
         
     def page5_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(4)
+        global detail_logger
+        detail_logger.debug('Change to Page: Export')
         if self.fl_refresh_page5:
             self.fl_refresh_page5=False
             self.refresh_page5()
         
     def page6_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(5)
+        global detail_logger
+        detail_logger.debug('Change to Page: Process')
         if self.fl_refresh_page6:
             self.fl_refresh_page6=False
             self.refresh_page6()
+            
+    def page3B_clicked(self):
+        self.main_ui.stackedWidget.setCurrentIndex(6)
+        global detail_logger
+        detail_logger.debug('Change to Page: Download Resources')
         
         
     def sign_in(self):
@@ -1326,7 +1389,8 @@ class StartQT(QtWidgets.QMainWindow):
             self.projects=self.XConn.getProjects()
             if self.projects==0:
                 self.PopupDlg("Something doesn't seem right. Check your Username/Password/Hostname")
-                
+            elif self.XConn==0:
+                self.PopupDlg("Connection Issues. Please check if you are connected to the Internet/VPN")
             else:
                 self.main_ui.lbl_status.setVisible(True)
                 self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;"))
@@ -1430,28 +1494,28 @@ class StartQT(QtWidgets.QMainWindow):
             self.PopupDlg("Some of the scan/s may have too many Resources. Keeping only first %d"%len(self.resource_checkBoxes))
         else:
             self.resource_labels.append(label)
+            global detail_logger
+            detail_logger.debug('Found new kind of resource: %s'%label)
             i=0
+            #Enabling and Labeling the Resource Check Boxes
             for res_lbl in self.resource_labels:                
                 self.resource_checkBoxes[i].setText(res_lbl)
                 self.resource_checkBoxes[i].setChecked(True)
                 self.resource_checkBoxes[i].setVisible(True)
                 i+=1
+            #Disabling the remaining Checkboxes
             for chkBox in range(i,len(self.resource_checkBoxes)):                
                 self.resource_checkBoxes[i].setChecked(False)
                 self.resource_checkBoxes[i].setVisible(False)
                 i+=1
-            
-        
-    
-#    def removeResourceCheckBox(self,label):
-#        self.resource_labels.remove(label)
 
     def populate_subjects(self):
         """
         Populating the Subject List in the UI
         """
         if self.main_ui.cmb_project.currentIndex()!=0:
-            #print("Populating: "+str(self.curr_proj))
+            global detail_logger
+            detail_logger.debug('Bringing in Subjects for Project: %s'%self.curr_proj)
             self.li_subs.extend(self.XConn.getSubjects(self.curr_proj))
             # Populate the Subject List
             for sub in self.li_subs:
@@ -1469,6 +1533,8 @@ class StartQT(QtWidgets.QMainWindow):
         If the index of the combobox of available projects changes.
         """
         if self.main_ui.cmb_project.currentIndex()!=0:
+            global detail_logger
+            detail_logger.debug('Changing Project to: %s'%self.curr_proj)
             #print(self.main_ui.cmb_project.currentText())
             self.main_ui.grp_what.setEnabled(True)
             self.curr_proj=self.main_ui.cmb_project.currentText()
@@ -1484,6 +1550,8 @@ class StartQT(QtWidgets.QMainWindow):
         """
         When the 'Reset All' button is clicked
         """
+        global detail_logger
+        detail_logger.debug('Resetting Everything...............')
         self.main_ui.cmb_project.setCurrentIndex(0)
         self.reset_all()
 
@@ -1657,6 +1725,8 @@ class StartQT(QtWidgets.QMainWindow):
         return str(str_strip).split("(")[0]
         
     def download_selected(self):
+        global detail_logger
+        detail_logger.debug('Final Download Step')
         self.reset_internal()
         #self.prep_download() #reset_internal takes care of this
         self.createScanQualityCheckBoxes()
@@ -1683,9 +1753,11 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_page6.setEnabled(False)
         self.main_ui.btn_page6.setVisible(False)
         self.main_ui.grp_sess_select.setVisible(True)
-        self.main_ui.grp_download_method.setEnabled(True)
+        self.main_ui.grp_logging_info.setEnabled(True)
         
     def upload_selected(self):
+        global detail_logger
+        detail_logger.debug('Upload Selection Page')
         self.reset_internal()
         #self.prep_upload() #reset_internal takes care of this
         self.createScanQualityCheckBoxes()
@@ -1722,7 +1794,7 @@ class StartQT(QtWidgets.QMainWindow):
             self.sysConfig= yaml.load(sysConfigF)
         if self.sysConfig['sys-init']['cache-location'][0]=='~':
             self.sysConfig['sys-init']['cache-location'][0]=os.path.expanduser("~")
-            
+        
         #Load host
         self.main_ui.edt_host.setText(self.sysConfig['sys-init']['host'])
         #Reads Username from system and loads it
@@ -1735,8 +1807,21 @@ class StartQT(QtWidgets.QMainWindow):
         """
         xcache=''
         for dirname in self.sysConfig['sys-init']['cache-location']:
+            #Make cache directory and LOGS directory
             xcache=os.path.join(xcache,dirname)
-        self.makeDirsIfNotExist(xcache)
+        self.makeDirsIfNotExist(os.path.join(xcache,"LOGS"))
+        #Now Make LOGFILE and initialize LOGGING stuff
+        global hdlr
+        global detail_logger
+        global formatter
+        
+        
+        hdlr = logging.FileHandler(os.path.join(xcache,"LOGS","XDUI_"+strftime("%Y%m%d-%H%M%S")+".log"))
+        hdlr.setFormatter(formatter)
+        detail_logger.addHandler(hdlr)
+        detail_logger.setLevel(logging.INFO)
+        detail_logger.info('Starting Logger.......')
+        detail_logger.info('Log Level: INFO')
                     
     def makeDirsIfNotExist(self,path):
         """
@@ -1796,6 +1881,35 @@ class StartQT(QtWidgets.QMainWindow):
        #msg.buttonClicked.connect(self.MsgBoxBtn)
        return msg.exec_()
                       
+   
+    def view_logs_clicked(self):
+        """
+        When "View Historic Logs" button is clicked
+        """
+        if system()=='Windows':
+            os.startfile(os.path.join(*self.sysConfig['sys-init']['cache-location'],'LOGS'))
+        elif system() == "Darwin":
+            subprocess.Popen(["open", os.path.join(*self.sysConfig['sys-init']['cache-location'],'LOGS')])
+        else:
+            subprocess.Popen(["xdg-open", os.path.join(*self.sysConfig['sys-init']['cache-location'],'LOGS')])
+            
+    def logging_short(self):
+        """
+        When Short logging Radio Button is selected
+        """
+        global detail_logger
+        detail_logger.setLevel(logging.INFO)
+        detail_logger.info('Start Log Level: INFO')
+    
+    def logging_detailed(self):
+        """
+        When Detailed Logging Radio Button is selected
+        """
+        global detail_logger        
+        detail_logger.setLevel(logging.DEBUG)
+        detail_logger.info('Start Log Level: DEBUG')
+    
+    
     def closeEvent(self,event):
         result = QtWidgets.QMessageBox.question(self,
                       "Confirm Exit...",
@@ -1857,6 +1971,7 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
     """
     Helper function for download_clicked. Download the files here
     """
+    global detail_logger
     #tmp=','.join(str(e) for e in jobDefs)
     
     #items in jobDefs - 0: Download Format
@@ -1867,6 +1982,7 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
     #                 - 5: Counter
     if jobDefs[0]==1:
         #Direct download no conversion
+        detail_logger.debug('Downloading Raw DICOMs')
         print ("Now Getting >>>: %s"%jobDefs[1])
         #Make directories first
         if not os.path.exists(jobDefs[1]):
@@ -1878,6 +1994,7 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
         
         # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
         # Compared it to downloading each file one at a time, and it is considerably slower.
+        detail_logger.info('GET :%s'%jobDefs[3])
         #Creating new connection object.
         XConn=XnatRest(host,uname,passwd,False)
         if XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
@@ -1885,8 +2002,6 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
             return "Success: "+jobDefs[3]
         else:
             return "Failed GET: "+jobDefs[3] #Will fail if 404 in GET (or any issues with GET)
-        
-        
     elif jobDefs[0]==2:
         #Converting to AFNI after downloading
         print ("Got 2 for >>>: %s"%jobDefs[1])
@@ -1910,9 +2025,12 @@ def cleanUpDownload(path,filename):
     This is the dumbest thing, cannot extract each file to custom location, 
     it has to be in the same internal directory structure as the zip file.
     """
+    global detail_logger
+    detail_logger.debug('Cleaning up after download: %s'%path)
     #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
     if os.path.isfile(os.path.join(path,filename)):
         #Need a try except block for the zipfile stuff
+        detail_logger.debug('Unzipping: %s'%path)
         zipFileName=zipfile.ZipFile(os.path.join(path,filename))
         zipFileName.extractall(path)
         allFiles=zipFileName.namelist()
@@ -1921,10 +2039,12 @@ def cleanUpDownload(path,filename):
         zipFileName.close()
         
         #Adding try block here doesn't seem necessary , as yet. 
+        detail_logger.debug('Deleting file: %s'%os.path.join(path,filename))
         os.remove(os.path.join(path,filename))
         
         #Flag to check if all files moved successfully
         f_renamed=True
+        detail_logger.debug('Moving files to the right location: %s'%path)
         for aFile in allFiles:
             fPath=aFile.split('/')
             try: #filename[:-4] to remove the .zip extension from the name
@@ -1932,7 +2052,7 @@ def cleanUpDownload(path,filename):
             except os.error as e:
                 f_renamed=False
                 raise #Do logging instead of raising
-                
+        detail_logger.debug('Deleting unnecessary directories under: %s'%path)     
         if f_renamed: #If all files successfully moved, then delete the directory
             try:
                 # A bit of a risky thing to do. But o well. :)

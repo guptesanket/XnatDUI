@@ -29,12 +29,10 @@ sys-init:
     - "unknown"
     - "questionable"
     - "unusable"
-  # path where to store xnat cache, logfiles & app cache. Each value a directory name
+  # path where to store xnat cache, logfiles & app cache. Each value a directory name. New directory "LOGS" is created under this.
   cache-location: 
     - "~"
     - ".xnat-dui-cache"
-  #Log level to store in logfile
-  loglevel: "detail" #Possible values: detail , short
   #Colors used in tables to identify duplicate fields
   colors:
     - "#FFFFCC"

@@ -7,6 +7,7 @@ Created on Wed Jun  7 15:13:15 2017
 import requests
 import os
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from requests.exceptions import ConnectionError
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 

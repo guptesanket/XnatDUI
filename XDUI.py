@@ -77,8 +77,10 @@ class StartQT(QtWidgets.QMainWindow):
         
         #Connect signals to buttons
         self.main_ui.btn_page1.clicked.connect(self.page1_clicked)
+        self.main_ui.btn_page1B.clicked.connect(self.page1B_clicked)
         self.main_ui.btn_page2.clicked.connect(self.page2_clicked)
         self.main_ui.btn_page3.clicked.connect(self.page3_clicked)
+        #self.main_ui.btn_page3B.clicked.connect(self.page3B_clicked) #Dont need a button
         self.main_ui.btn_page4.clicked.connect(self.page4_clicked)
         self.main_ui.btn_page5.clicked.connect(self.page5_clicked)
         self.main_ui.btn_page6.clicked.connect(self.page6_clicked)
@@ -147,8 +149,10 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_scans.setEnabled(False)
         #Connections to Subjects/Sessions/Scans List/Trees
         self.main_ui.lst_subjects.itemChanged.connect(self.click_sub)
+        self.main_ui.lst_subjectsB.itemChanged.connect(self.click_subB)
         self.main_ui.tree_sessions.itemClicked.connect(self.handle_sess)
         self.main_ui.tree_scans.itemClicked.connect(self.handle_scan)
+        self.main_ui.tree_scansB.itemClicked.connect(self.handle_scanB)
         
         #Radio Button Connections
         self.main_ui.rb_subj_res.toggled.connect(self.subj_res_rb_selected)
@@ -159,6 +163,8 @@ class StartQT(QtWidgets.QMainWindow):
         #Hide the root elements on the trees
         self.main_ui.tree_sessions.header().hide()
         self.main_ui.tree_scans.header().hide()
+        self.main_ui.tree_scansB.header().hide()
+        self.main_ui.tree_completion_status.header().hide()
         
         
         #Button Connections for Path making buttons
@@ -170,6 +176,8 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_path_all_scans.clicked.connect(self.send2allScanChkBoxes)
         self.main_ui.cmb_path_txt.addItems(CMBPATH)
         
+        #CheckBox Export 
+        self.main_ui.chk_export.clicked.connect(self.export_checked)
         
         #Flag to denote all download destination paths are unique
         self.fl_download_paths_uniq=False
@@ -219,16 +227,20 @@ class StartQT(QtWidgets.QMainWindow):
         
         #Disabling Buttons 
         self.main_ui.btn_page1.setEnabled(False)
+        self.main_ui.btn_page1B.setEnabled(False)
         self.main_ui.btn_page2.setEnabled(False)
         self.main_ui.btn_page3.setEnabled(False)
+        #self.main_ui.btn_page3B.setEnabled(False) #Dont need a button
         self.main_ui.btn_page4.setEnabled(False)
         self.main_ui.btn_page5.setEnabled(False)
         self.main_ui.btn_page6.setEnabled(False)
         
         #Flags to trigger tab refresh
         self.fl_refresh_page1=False
+        self.fl_refresh_page1B=False
         self.fl_refresh_page2=False
         self.fl_refresh_page3=False
+        self.fl_refresh_page3B=False
         self.fl_refresh_page4=False
         self.fl_refresh_page5=False
         self.fl_refresh_page6=False
@@ -341,85 +353,17 @@ class StartQT(QtWidgets.QMainWindow):
         #results=[t.result() for t in completed]
         #print('Results: {!r}'.format(results)) #return from the doenloadRequest function
         
+        #Deleting remaining directories after all moving is done
+        for dtask in set(completed): #Converting to Set to remove duplicates
+            if dtask.result():
+                if dtask.result()[0]: #If True received then delete
+                    self.deleteDirsIfExist(dtask.result()[1])
+        
         detail_logger.info('All Downloads finished')
         self.PopupDlg("All Downloads Finished")
         #print('All Downloads Finished')
         
-#There is a slight performance gain when the following two commented out functions are separeted from the QT Class, since they can now be run on a separete (sub)thread
-#    def downloadRequest(self,jobDefs): #To run this with download_async make it async (i.e. async def downloadRequest(blah,blah))
-#        """
-#        Helper function for download_clicked. Download the files here
-#        """
-#        tmp=','.join(str(e) for e in jobDefs)
-#        
-#        #items in jobDefs - 0: Download Format
-#        #                 - 1: Download directory
-#        #                 - 2: DOwnload filename
-#        #                 - 3: main resource URI 
-#        #                 - 4: download structure
-#        #                 - 5: Counter
-#        if jobDefs[0]==1:
-#            #Direct download no conversion
-#            print ("Got 1 for >>>: %s"%tmp)
-#            
-#            #Make directories first
-#            self.makeDirsIfNotExist(jobDefs[1])
-#            # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
-#            # Compared it to downloading each file one at a time, and it is considerably slower.
-#            if self.XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
-#                self.cleanUpDownload(jobDefs[1],jobDefs[2])
-#            
-#        elif jobDefs[0]==2:
-#            #Converting to AFNI after downloading
-#            print ("Got 2 for >>>: %s"%tmp)
-#            
-#        elif jobDefs[0]==3:
-#            #Converting to NIFTI after downloading
-#            print ("Got 3 for >>>: %s"%tmp)
-#        elif jobDefs[0]==3:
-#            #Run custom script after downloading
-#            print ("Got 3 for >>>: %s"%tmp)
-#            
-#        return "ReturnValue"
-#
-#    def cleanUpDownload(self,path,filename):
-#        """
-#        Extracts the zipfile and re-structures the directory structure as asked.
-#        This function can be made better.
-#        This is the dumbest thing, cannot extract each file to custom location, 
-#        it has to be in the same internal directory structure as the zip file.
-#        """
-#        #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
-#        if os.path.isfile(os.path.join(path,filename)):
-#            #Need a try except block for the zipfile stuff
-#            zipFileName=zipfile.ZipFile(os.path.join(path,filename))
-#            zipFileName.extractall(path)
-#            allFiles=zipFileName.namelist()
-#    #        for zfile in zipFileName.namelist():
-#    #            zipFileName.extract(zfile,path)
-#            zipFileName.close()
-#            
-#            #Adding try block here doesn't seem necessary , as yet. 
-#            os.remove(os.path.join(path,filename))
-#            
-#            #Flag to check if all files moved successfully
-#            f_renamed=True
-#            for aFile in allFiles:
-#                fPath=aFile.split('/')
-#                try:
-#                    os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename+'-'+fPath[-1]))
-#                except os.error as e:
-#                    f_renamed=False
-#                    raise #Do logging instead of raising
-#                    
-#            if f_renamed: #If all files successfully moved, then delete the directory
-#                try:
-#                    # A bit of a risky thing to do. But o well. :)
-#                    shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0]),ignore_errors=True)
-#                except os.error as e:
-#                    # Ignoring Errors, so this is kind of useless
-#                    if e.errno !=errno.EEXIST:
-#                        raise #Do logging instead of raising
+
 
     def identify_duplicate_paths(self):
         """
@@ -556,6 +500,13 @@ class StartQT(QtWidgets.QMainWindow):
             txt_layout=grp_layout.itemAt(1).layout()
             txt_layout.itemAt(0).widget().setText("")
             txt_layout.itemAt(1).widget().setText("")
+            
+    def handle_scanB(self,item,column):
+        """
+        When a single scan is checked in the scan tree - 'Completion Status' tab
+        """
+        global detail_logger
+        root=self.main_ui.tree_completion_status.invisibleRootItem()
     
     def handle_scan(self,item,column):
         """
@@ -764,6 +715,8 @@ class StartQT(QtWidgets.QMainWindow):
                         #print (res['label'])
                         if res['label'] not in self.resource_labels:
                             self.addResourceCheckBox(res['label'] )
+                            
+            #To show only selected scan quality
             for s_id,s_det in self.tree_all[str(subj)][str(sess)]['scans'].items():
                 #print("SCAN")
                 #print (s_det)
@@ -919,10 +872,149 @@ class StartQT(QtWidgets.QMainWindow):
             elif self.fl_subjects_selection==0: #Switching from 0 to 1
                 self.fl_subjects_selection=1
 
+    def click_subB(self,item_sub):
+        """
+        When a Subject is clicked in Completion Status tab
+        """
+        self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
+        self.main_ui.lbl_status.setText('  Getting Sessions')
+        if item_sub.checkState(): 
+            #Item is Checked - checkState is True
+            self.main_ui.pb_inter.setValue(0)
+            #Add to the Completion Status Tree
+            TCparent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_completion_status)
+            TCparent.setText(0,item_sub.text())
+            
+            root=self.main_ui.tree_scansB.invisibleRootItem() #Getting the scan-tree root
+            detail_logger.debug('Subject %s Ticked'%item_sub.text())
+            if str(item_sub.text()) not in self.tree_all: #If not already pulled
+                self.main_ui.pb_inter.setValue(10)
+                tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
+                #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
+                self.tree_all[str(item_sub.text())]={}
+                if len(tmp_exp_list)!=0:  #To prevent divide by zero error
+                    inter=int(100/len(tmp_exp_list))
+                    tot=0
+                    for exp in tmp_exp_list:
+                        tot=tot+inter
+                        self.main_ui.pb_inter.setValue(tot)
+                        if exp['xsiType']=='xnat:mrSessionData': #Getting experiments only of the type mrSessionData
+                            self.tree_all[str(item_sub.text())][exp['label']]={}
+                            self.tree_all[str(item_sub.text())][exp['label']]['exp']=exp['ID'] #Keeping only the ID  . No use for other fields for now.
+                            self.tree_all[str(item_sub.text())][exp['label']]['strip']=self.strip_sub_id(str(item_sub.text()),exp['label'])
+                        
+                        tmp_sess_list=self.XConn.getScans(self.curr_proj,item_sub.text(),exp['label'])
+                        #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
+                        self.tree_all[str(item_sub.text())][str(exp['label'])]['scans']={}
+                        for scan in tmp_sess_list:
+                            #sc_res=self.XConn.getResourcesList(self.curr_proj,subj,sess,scan['ID'])
+                            sc_res=self.XConn.getScanResources(self.curr_proj,item_sub.text(),exp['label'],scan['ID'])
+                            self.tree_all[str(item_sub.text())][str(exp['label'])]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
+                            self.tree_all[str(item_sub.text())][str(exp['label'])]['scans'][scan['ID']]['res']=[res['label'] for res in sc_res ] #List of resources for this scan for e.g. DICOM, NIFTI, etc.
+                            
+                            # Adding to the scan tree
+                            flag=0
+                            for index in range(root.childCount()):
+                                if root.child(index).text(0)==scan['type']:
+                                    new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
+                                    new_kid.setText(0,exp['label'])
+                                    #new_kid.setText(1,item_sub.text())
+                                    new_kid.setStatusTip(0,item_sub.text())
+                                    flag=1
+                                    break
+                            if flag==0:
+                                parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_scansB)
+                                parent.setText(0,scan['type'])
+                                parent.setFlags(parent.flags() | QtCore.Qt.ItemIsUserCheckable)
+                                parent.setCheckState(0,QtCore.Qt.Unchecked)
+                                child = QtWidgets.QTreeWidgetItem(parent)
+                                child.setText(0,exp['label'])
+                                #child.setText(1,item_sub.text())
+                                child.setStatusTip(0,item_sub.text())
+                                          
+            else: #If already pulled
+                for sess in self.tree_all[str(item_sub.text())]: 
+                    if 'scans' not in self.tree_all[str(item_sub.text())][str(sess)]:
+                        tmp_sess_list=self.XConn.getScans(self.curr_proj,item_sub.text(),sess)
+                        #tmp_sess_list=XnatUtils.list_scans(self.xnat_intf,str(self.curr_proj),str(subj),str(sess))
+                        self.tree_all[str(item_sub.text())][str(sess)]['scans']={}
+                        for scan in tmp_sess_list:
+                            #sc_res=self.XConn.getResourcesList(self.curr_proj,subj,sess,scan['ID'])
+                            sc_res=self.XConn.getScanResources(self.curr_proj,item_sub.text(),sess,scan['ID'])
+                            self.tree_all[str(item_sub.text())][str(sess)]['scans'][scan['ID']]={k:v for k,v in scan.items() if k in ['quality','type']} #Getting only select things from the scan dict
+                            self.tree_all[str(item_sub.text())][str(sess)]['scans'][scan['ID']]['res']=[res['label'] for res in sc_res ] #List of resources for this scan for e.g. DICOM, NIFTI, etc.
+                            
+                            # Adding to the scan tree
+                            flag=0
+                            for index in range(root.childCount()):
+                                if root.child(index).text(0)==scan['type']:
+                                    new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
+                                    new_kid.setText(0,exp['label'])
+                                    #new_kid.setText(1,item_sub.text())
+                                    new_kid.setStatusTip(0,item_sub.text())
+                                    flag=1
+                                    break
+                            if flag==0:
+                                parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_scansB)
+                                parent.setText(0,scan['type'])
+                                parent.setFlags(parent.flags() | QtCore.Qt.ItemIsUserCheckable)
+                                parent.setCheckState(0,QtCore.Qt.Unchecked)
+                                child = QtWidgets.QTreeWidgetItem(parent)
+                                child.setText(0,exp['label'])
+                                #child.setText(1,item_sub.text())
+                                child.setStatusTip(0,item_sub.text())
+                        
+            self.main_ui.pb_inter.setValue(95)
+            self.dict_checked_all[str(item_sub.text())]={}
+            for sess in self.tree_all[str(item_sub.text())]:    #Adding the sessions to checked Sessions             
+                #self.dict_checked_all[str(item_sub.text())][sess]=[self.strip_sub_id(str(item_sub.text()),sess),{}] #Using the Processor
+                self.dict_checked_all[str(item_sub.text())][sess]=[self.tree_all[str(item_sub.text())][sess]['strip'],{0: {}, 1: {}},{0: {}, 1: {}}] # 0= Not selected, 1=Selected scans & resources || So, [1] is scans,[2] is resources
+
+            self.main_ui.pb_inter.setValue(100)
+        else:  #Unchecked
+            detail_logger.debug('Subject %s Unticked'%item_sub.text())
+            
+            #Remove from the Completion Status Tree
+            TCroot=self.main_ui.tree_completion_status.invisibleRootItem()
+            for index in range(TCroot.childCount()):
+                if TCroot.child(index).text(0)==item_sub.text():
+                    TCroot.removeChild(TCroot.child(index))
+                    break
+            
+            sub=self.dict_checked_all.pop(str(item_sub.text()),None)
+            #print(sub) #Whole dict
+            root=self.main_ui.tree_scansB.invisibleRootItem()
+            for index in range(root.childCount()):
+                print("Children:%d"%root.child(index).childCount())
+                #if root.child(index).statusTip(0)==item_sub.text():
+                toRemove=[]
+                for ind2 in range(root.child(index).childCount()):
+                    print (root.child(index).child(ind2).statusTip(0))
+                    if root.child(index).child(ind2).statusTip(0)==item_sub.text():
+                        #print("Found: %d"%ind2)
+                        toRemove.append(ind2)
+                    else:
+                        print("Not correct: %d"%ind2)
+                        
+                        
+                for ind2 in toRemove:    
+                    root.child(index).removeChild(root.child(index).child(ind2))
+                    #print(item_sub.text())
+                    #print(root.child(index).child(ind2).text(1))
+#                    if root.child(index).child(ind2).text(1)==item_sub.text():
+#                        root.child(index).removeChild(root.child(index).child(ind2))
+#                if root.child(index).childCount()==0:
+#                    root.removeChild(root.child(index))
+#                        break
+#                    break
+            
+            
+        self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;")) # f79f99 - Red
+        self.main_ui.lbl_status.setText('  Ready')
 
     def click_sub(self,item_sub):
         """
-        When a Subject is clicked
+        When a Subject is clicked in main selection tab
         """
         self.fl_refresh_page2=True
         self.fl_refresh_page3=True
@@ -930,7 +1022,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page5=True
         self.fl_refresh_page6=True
         global detail_logger
-        if self.fl_subjects_selection==1: #If "Resources" is selected
+        if self.fl_subjects_selection==1: #If "Resources" is selected6
             #For Resources
             self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
             self.main_ui.lbl_status.setText('  Getting Resources')
@@ -1287,6 +1379,9 @@ class StartQT(QtWidgets.QMainWindow):
         return True
 
     def refresh_page4(self):
+        """
+        Upload selection Page
+        """
         pass
             
     def refresh_page5(self):
@@ -1324,6 +1419,15 @@ class StartQT(QtWidgets.QMainWindow):
         if self.fl_refresh_page1:
             self.fl_refresh_page1=False
             self.refresh_page1()
+            
+    def page1B_clicked(self):
+        self.main_ui.stackedWidget.setCurrentIndex(6)
+        global detail_logger
+        detail_logger.debug('Change to Page: Selection Completion Status')
+        if self.fl_refresh_page1B:
+            self.fl_refresh_page1B=False
+            self.refresh_page1B()
+
         
     def page2_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(1)
@@ -1341,6 +1445,14 @@ class StartQT(QtWidgets.QMainWindow):
         if self.fl_refresh_page3:
             self.fl_refresh_page3=False
             self.refresh_page3()
+            
+    def page3B_clicked(self):
+        self.main_ui.stackedWidget.setCurrentIndex(8)
+        global detail_logger
+        detail_logger.debug('Change to Page: Download Resources')
+        if self.fl_refresh_page3B:
+            self.fl_refresh_page3B=False
+            self.refresh_page3B()
         
     def page4_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(3)
@@ -1366,10 +1478,6 @@ class StartQT(QtWidgets.QMainWindow):
             self.fl_refresh_page6=False
             self.refresh_page6()
             
-    def page3B_clicked(self):
-        self.main_ui.stackedWidget.setCurrentIndex(6)
-        global detail_logger
-        detail_logger.debug('Change to Page: Download Resources')
         
         
     def sign_in(self):
@@ -1466,6 +1574,32 @@ class StartQT(QtWidgets.QMainWindow):
         When any of the resources checkboxes are checked/Unchecked
         """
         self.scan_quality_checked()
+        
+    def export_checked(self):
+        """
+        When "Export Only" checkbox is checked
+        """
+        if self.main_ui.chk_export.checkState():
+            self.main_ui.tree_sessions.setEnabled(True)
+            self.main_ui.btn_page1.setEnabled(True)
+            self.main_ui.btn_page1.setVisible(True)
+            self.main_ui.btn_page1.setText("Hierarchy Selection")
+            self.main_ui.btn_page1B.setEnabled(True)
+            self.main_ui.btn_page1B.setVisible(True)
+            self.main_ui.btn_page2.setEnabled(False)
+            self.main_ui.btn_page2.setVisible(False)
+            self.main_ui.btn_page3.setEnabled(False)
+            self.main_ui.btn_page3.setVisible(False)
+            self.main_ui.btn_page4.setEnabled(False)
+            self.main_ui.btn_page4.setVisible(False)
+            self.main_ui.btn_page5.setEnabled(True)
+            self.main_ui.btn_page5.setVisible(True)
+            self.main_ui.btn_page6.setEnabled(False)
+            self.main_ui.btn_page6.setVisible(False)
+            self.main_ui.grp_sess_select.setVisible(True)
+        else:
+            self.prep_download()
+            self.main_ui.btn_page1.setText("Select")
 
     def createScanQualityCheckBoxes(self):
         """
@@ -1523,6 +1657,17 @@ class StartQT(QtWidgets.QMainWindow):
                 tmp_item.setToolTip(sub['ID'])
                 tmp_item.setCheckState(0)
                 self.main_ui.lst_subjects.addItem(tmp_item)
+                
+
+            for sub in self.li_subs:
+                tmp_item=QtWidgets.QListWidgetItem(sub['label'])
+                tmp_item.setToolTip(sub['ID'])
+                tmp_item.setCheckState(0)
+                self.main_ui.lst_subjectsB.addItem(tmp_item)
+
+#            for sub in self.li_subs:
+#                parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_completion_status)
+#                parent.setText(0,sub['label'])
 
             #Enabling Upload Tab
             #self.main_ui.btn_page4.setEnabled(True)
@@ -1742,16 +1887,20 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_sessions.setEnabled(False)
         self.main_ui.btn_page1.setEnabled(True)
         self.main_ui.btn_page1.setVisible(True)
+        self.main_ui.btn_page1B.setEnabled(False)
+        self.main_ui.btn_page1B.setVisible(False)
         self.main_ui.btn_page2.setEnabled(False)
         self.main_ui.btn_page2.setVisible(True)
         self.main_ui.btn_page3.setEnabled(False)
         self.main_ui.btn_page3.setVisible(True)
         self.main_ui.btn_page4.setEnabled(False)
         self.main_ui.btn_page4.setVisible(False)
-        self.main_ui.btn_page5.setEnabled(True)
-        self.main_ui.btn_page5.setVisible(True)
+        self.main_ui.btn_page5.setEnabled(False)
+        self.main_ui.btn_page5.setVisible(False)
         self.main_ui.btn_page6.setEnabled(False)
         self.main_ui.btn_page6.setVisible(False)
+        self.main_ui.chk_export.setVisible(True)
+        self.main_ui.chk_export.setEnabled(True)
         self.main_ui.grp_sess_select.setVisible(True)
         self.main_ui.grp_logging_info.setEnabled(True)
         
@@ -1773,6 +1922,8 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_sessions.setEnabled(True)
         self.main_ui.btn_page1.setEnabled(True)
         self.main_ui.btn_page1.setVisible(True)
+        self.main_ui.btn_page1B.setEnabled(False)
+        self.main_ui.btn_page1B.setVisible(False)
         self.main_ui.btn_page2.setEnabled(False)
         self.main_ui.btn_page2.setVisible(False)
         self.main_ui.btn_page3.setEnabled(False)
@@ -1783,6 +1934,8 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_page5.setVisible(False)
         self.main_ui.btn_page6.setEnabled(False)
         self.main_ui.btn_page6.setVisible(False)
+        self.main_ui.chk_export.setVisible(False)
+        self.main_ui.chk_export.setEnabled(False)
         self.main_ui.grp_sess_select.setVisible(True)
         
         
@@ -1834,7 +1987,24 @@ class StartQT(QtWidgets.QMainWindow):
             except os.error as e:
                 if e.errno !=errno.EEXIST:
                     raise
-                    
+                 
+    def deleteDirsIfExist(self,path):
+        """
+        Removing Directories cleanly if they exist
+        """
+        if not os.path.exists(path):
+            try:
+                shutil.rmtree(path) #,ignore_errors=True)
+                return True
+            except os.error as e:
+                if e.errno !=errno.EEXIST:
+                    print(e)
+                    detail_logger.error(e)
+                    #raise #Do logging instead of raising
+                else:
+                    print(e)
+                    detail_logger.error(e)
+                return False
                     
     def loadUserConfig(self):
         """
@@ -1980,6 +2150,7 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
     #                 - 3: main resource URI 
     #                 - 4: download structure
     #                 - 5: Counter
+    print(detail_logger.getEffectiveLevel())
     if jobDefs[0]==1:
         #Direct download no conversion
         detail_logger.debug('Downloading Raw DICOMs')
@@ -1998,10 +2169,10 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
         #Creating new connection object.
         XConn=XnatRest(host,uname,passwd,False)
         if XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
-            cleanUpDownload(jobDefs[1],jobDefs[2])
-            return "Success: "+jobDefs[3]
+            return cleanUpDownload(jobDefs[1],jobDefs[2])
+            
         else:
-            return "Failed GET: "+jobDefs[3] #Will fail if 404 in GET (or any issues with GET)
+            return [False,"Failed GET: "+jobDefs[3]] #Will fail if 404 in GET (or any issues with GET)
     elif jobDefs[0]==2:
         #Converting to AFNI after downloading
         print ("Got 2 for >>>: %s"%jobDefs[1])
@@ -2037,7 +2208,7 @@ def cleanUpDownload(path,filename):
 #        for zfile in zipFileName.namelist():
 #            zipFileName.extract(zfile,path)
         zipFileName.close()
-        
+        #print(allFiles)
         #Adding try block here doesn't seem necessary , as yet. 
         detail_logger.debug('Deleting file: %s'%os.path.join(path,filename))
         os.remove(os.path.join(path,filename))
@@ -2051,16 +2222,29 @@ def cleanUpDownload(path,filename):
                 os.rename(os.path.join(path,os.path.join(*fPath)),os.path.join(path,filename[:-4]+'-'+fPath[-1]))
             except os.error as e:
                 f_renamed=False
-                raise #Do logging instead of raising
+                print("Couldnt rename")
+                print(e)
+                detail_logger.error(e)
+                #raise #Do logging instead of raising
         detail_logger.debug('Deleting unnecessary directories under: %s'%path)     
         if f_renamed: #If all files successfully moved, then delete the directory
             try:
-                # A bit of a risky thing to do. But o well. :)
-                shutil.rmtree(os.path.join(path,allFiles[0].split('/')[0])) #,ignore_errors=True)
+                # A bit of a risky thing to do. But o well. :) Deleting till resource name. 
+                #For e.g. The files get unzipped as sessName/scans/scan-Name/resources/ResourceType/files/filename* , 
+                # so deleting everything under sessName/scans/scan-Name/resources/ResourceType and returning the sessName
+                #To delete at the end. To prevent deleting a different resource of the same session, that is still being moved/downloaded
+                shutil.rmtree(os.path.join(path,*allFiles[0].split('/')[:5])) #,ignore_errors=True)
+                return [True,os.path.join(path,allFiles[0].split('/')[0])]  #Returning the parent directory of the zip, to delete it at the end
             except os.error as e:
                 # Ignoring Errors, so this is kind of useless
                 if e.errno !=errno.EEXIST:
-                    raise #Do logging instead of raising
+                    print(e)
+                    detail_logger.error(e)
+                    #raise #Do logging instead of raising
+                else:
+                    print(e)
+                    detail_logger.error(e)
+                return [False,os.path.join(path,allFiles[0].split('/')[0])]
 
 
 if __name__ == "__main__":

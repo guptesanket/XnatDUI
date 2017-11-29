@@ -366,6 +366,20 @@
                 <number>1</number>
                </property>
                <item>
+                <widget class="QCheckBox" name="chk_export">
+                 <property name="text">
+                  <string>Export Only</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="Line" name="line">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
                 <widget class="QPushButton" name="btn_view_logs">
                  <property name="text">
                   <string>View Historic Logs</string>
@@ -416,6 +430,13 @@
          <widget class="QPushButton" name="btn_page1">
           <property name="text">
            <string>Select</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btn_page1B">
+          <property name="text">
+           <string>Completion Status</string>
           </property>
          </widget>
         </item>
@@ -504,7 +525,7 @@
         <number>1</number>
        </property>
        <property name="currentIndex">
-        <number>7</number>
+        <number>6</number>
        </property>
        <widget class="QWidget" name="page_1">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -1654,6 +1675,88 @@
          </item>
         </layout>
        </widget>
+       <widget class="QWidget" name="page_1B">
+        <layout class="QVBoxLayout" name="verticalLayout_30">
+         <item>
+          <widget class="QSplitter" name="splitter_14">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <widget class="QWidget" name="verticalLayoutWidget_12">
+            <layout class="QVBoxLayout" name="verticalLayout_3">
+             <item>
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>Subject</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="edt_search_subB">
+               <property name="placeholderText">
+                <string>Search SUBJECT Label</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QListWidget" name="lst_subjectsB"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="verticalLayoutWidget_13">
+            <layout class="QVBoxLayout" name="verticalLayout_5">
+             <item>
+              <widget class="QLabel" name="label_13">
+               <property name="text">
+                <string>Completion Status</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="edt_search_comp_stat">
+               <property name="placeholderText">
+                <string>Search SCAN Label</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QTreeWidget" name="tree_completion_status">
+               <column>
+                <property name="text">
+                 <string notr="true">1</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="verticalLayoutWidget_14">
+            <layout class="QVBoxLayout" name="verticalLayout_29">
+             <item>
+              <widget class="QLabel" name="label_14">
+               <property name="text">
+                <string>Scans</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="cmb_completion_set"/>
+             </item>
+             <item>
+              <widget class="QTreeWidget" name="tree_scansB">
+               <column>
+                <property name="text">
+                 <string notr="true">1</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
        <widget class="QWidget" name="page_3B">
         <layout class="QVBoxLayout" name="verticalLayout_11">
          <item>
@@ -1742,88 +1845,6 @@
                <property name="title">
                 <string/>
                </property>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-       <widget class="QWidget" name="page_1B">
-        <layout class="QVBoxLayout" name="verticalLayout_30">
-         <item>
-          <widget class="QSplitter" name="splitter_14">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
-           </property>
-           <widget class="QWidget" name="verticalLayoutWidget_12">
-            <layout class="QVBoxLayout" name="verticalLayout_3">
-             <item>
-              <widget class="QLabel" name="label_12">
-               <property name="text">
-                <string>Subject</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit">
-               <property name="placeholderText">
-                <string>Search SUBJECT Label</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QListWidget" name="listWidget"/>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="verticalLayoutWidget_13">
-            <layout class="QVBoxLayout" name="verticalLayout_5">
-             <item>
-              <widget class="QLabel" name="label_13">
-               <property name="text">
-                <string>Completion Status</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="lineEdit_2">
-               <property name="placeholderText">
-                <string>Search SESSION Label</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QTreeWidget" name="treeWidget">
-               <column>
-                <property name="text">
-                 <string notr="true">1</string>
-                </property>
-               </column>
-              </widget>
-             </item>
-            </layout>
-           </widget>
-           <widget class="QWidget" name="verticalLayoutWidget_14">
-            <layout class="QVBoxLayout" name="verticalLayout_29">
-             <item>
-              <widget class="QLabel" name="label_14">
-               <property name="text">
-                <string>Scans</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="comboBox"/>
-             </item>
-             <item>
-              <widget class="QTreeWidget" name="treeWidget_2">
-               <column>
-                <property name="text">
-                 <string notr="true">1</string>
-                </property>
-               </column>
               </widget>
              </item>
             </layout>

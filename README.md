@@ -1,6 +1,6 @@
 # XnatDUI - Xnat Download-Upload UI
 
-This is an interface to talk to the [XNAT](https://www.xnat.org/) that was built out of need for some specific functionality required for [NIDA NRB](https://irp.drugabuse.gov/nrb/index.php) and after months of evolving, testing, requirements gathering, suggestions, critiques and comments, it is turning into a full fledged, fast and dependable Download-Upload-Export User Interface for Xnat.
+This is an interface to talk to [XNAT](https://www.xnat.org/), a web based -open-source neuroimaging repository. This was built out of need for some specific functionality required for [NIDA NRB](https://irp.drugabuse.gov/nrb/index.php) and after months of evolving, testing, requirements gathering, suggestions, critiques and comments, it is turning into a full fledged, fast and dependable Download-Upload-Export User Interface for Xnat.
 
 This is still under construction, and not at a stage I envision it to be. But I will try to get to that stage as and when time permits. 
 

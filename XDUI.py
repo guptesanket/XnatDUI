@@ -9,6 +9,7 @@ Xnat Download Upload UI
 
 import os
 import sys
+import csv
 from xnatdui import Ui_XnatDUI
 from PyQt5 import QtCore, QtGui, QtWidgets
 import yaml
@@ -154,6 +155,11 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_scans.itemClicked.connect(self.handle_scan)
         self.main_ui.tree_scansB.itemClicked.connect(self.handle_scanB)
         
+        self.main_ui.edt_search_subj.textChanged.connect(self.search_subj)
+        self.main_ui.edt_search_sess.textChanged.connect(self.search_sess)
+        self.main_ui.edt_search_subB.textChanged.connect(self.search_subjB)
+        self.main_ui.edt_search_comp_stat.textChanged.connect(self.search_comp_stat)
+        
         #Radio Button Connections
         self.main_ui.rb_subj_res.toggled.connect(self.subj_res_rb_selected)
         self.main_ui.rb_subj_sess.toggled.connect(self.subj_sess_rb_selected)
@@ -179,17 +185,21 @@ class StartQT(QtWidgets.QMainWindow):
         #CheckBox Export 
         self.main_ui.chk_export.clicked.connect(self.export_checked)
         
+        #Export Buttons
+        self.main_ui.btn_export_csv.clicked.connect(self.export_to_csv)
+        self.main_ui.btn_export_xlsx.clicked.connect(self.export_to_xlsx)
+        
         #Flag to denote all download destination paths are unique
         self.fl_download_paths_uniq=False
         self.dict_duplicate_paths=defaultdict(list)
         
         #Download Options Radio Button Signals
-        #QtCore.QObject.connect(self.main_ui.rb_afni, QtCore.SIGNAL("toggled(bool)"), self.afni_clicked)
-        self.main_ui.rb_afni.toggled.connect(self.afni_clicked)
-        #QtCore.QObject.connect(self.main_ui.rb_nifti, QtCore.SIGNAL("toggled(bool)"), self.nifti_clicked)
-        self.main_ui.rb_nifti.toggled.connect(self.nifti_clicked)
-        #QtCore.QObject.connect(self.main_ui.rb_custom, QtCore.SIGNAL("toggled(bool)"), self.custom_clicked)
-        self.main_ui.rb_custom.toggled.connect(self.custom_clicked)
+        #QtCore.QObject.connect(self.main_ui.rb_prog2, QtCore.SIGNAL("toggled(bool)"), self.prog2_clicked)
+        self.main_ui.rb_prog2.toggled.connect(self.prog2_clicked)
+        #QtCore.QObject.connect(self.main_ui.rb_prog1, QtCore.SIGNAL("toggled(bool)"), self.prog1_clicked)
+        self.main_ui.rb_prog1.toggled.connect(self.prog1_clicked)
+        #QtCore.QObject.connect(self.main_ui.rb_prog3, QtCore.SIGNAL("toggled(bool)"), self.prog3_clicked)
+        self.main_ui.rb_prog3.toggled.connect(self.prog3_clicked)
         #QtCore.QObject.connect(self.main_ui.rb_dcm, QtCore.SIGNAL("toggled(bool)"), self.dcm_clicked)
         self.main_ui.rb_dcm.toggled.connect(self.dcm_clicked)
         self.main_ui.btn_refresh_cmd.clicked.connect(self.download_cmd_refresh)
@@ -245,6 +255,11 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page5=False
         self.fl_refresh_page6=False
         
+        #Reneming Command/conversion radiobutton labels according to config file
+        self.main_ui.rb_dcm.setText(self.sysConfig['process-cmd'][0][0])
+        self.main_ui.rb_prog1.setText(self.sysConfig['process-cmd'][1][0])
+        self.main_ui.rb_prog2.setText(self.sysConfig['process-cmd'][2][0])
+        self.main_ui.rb_prog3.setText(self.sysConfig['process-cmd'][3][0])
         
         self.main_ui.grp_what.setEnabled(False)
         self.main_ui.grp_logging_info.setEnabled(False)
@@ -253,6 +268,8 @@ class StartQT(QtWidgets.QMainWindow):
         
         self.fl_download_started=False
         #self.testTable()
+    
+    
     
     def download_clicked(self):
         """
@@ -287,7 +304,7 @@ class StartQT(QtWidgets.QMainWindow):
                     #               - 1: Download directory
                     #               - 2: DOwnload filename (with .zip appended at the end)
                     #               - 3: main URI
-                    #               - 4: download structure
+                    #               - 4: download structure w/ conversion commmand if asked
                     #               - 5: Counter
                         
                     for i in range(self.main_ui.lst_cmd.count()):
@@ -506,7 +523,23 @@ class StartQT(QtWidgets.QMainWindow):
         When a single scan is checked in the scan tree - 'Completion Status' tab
         """
         global detail_logger
-        root=self.main_ui.tree_completion_status.invisibleRootItem()
+        #root=self.main_ui.tree_completion_status.invisibleRootItem()
+        
+        if item.checkState(column) == QtCore.Qt.Checked:  #Checked
+            detail_logger.debug('Scan %s Ticked'%item.text(0))
+            self.show_checked_scan_completion(item.text())
+        elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
+            detail_logger.debug('Scan %s Unticked'%item.text(0))
+            self.remove_unchecked_scan_completion(item.text())
+        else:
+            pass
+
+
+    def show_checked_scan_completion(self,item):
+        pass
+    def remove_unchecked_scan_completion(self,item):
+        pass
+
     
     def handle_scan(self,item,column):
         """
@@ -892,7 +925,7 @@ class StartQT(QtWidgets.QMainWindow):
                 tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
                 #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
                 self.tree_all[str(item_sub.text())]={}
-                if len(tmp_exp_list)!=0:  #To prevent divide by zero error
+                if not isinstance(tmp_exp_list, int) and len(tmp_exp_list)!=0:  #To prevent divide by zero error
                     inter=int(100/len(tmp_exp_list))
                     tot=0
                     for exp in tmp_exp_list:
@@ -1050,7 +1083,7 @@ class StartQT(QtWidgets.QMainWindow):
                     tmp_exp_list=self.XConn.getExperiments(self.curr_proj,item_sub.text())
                     #tmp_exp_list=XnatUtils.list_experiments(self.xnat_intf,str(self.curr_proj),str(item_sub.text()))
                     self.tree_all[str(item_sub.text())]={}
-                    if len(tmp_exp_list)!=0:  #To prevent divide by zero error
+                    if not isinstance(tmp_exp_list, int) and len(tmp_exp_list)!=0:  #To prevent divide by zero error
                         inter=int(100/len(tmp_exp_list))
                         tot=0
                         for exp in tmp_exp_list:
@@ -1092,20 +1125,20 @@ class StartQT(QtWidgets.QMainWindow):
             else:
                 detail_logger.debug('Subject %s Unticked'%item_sub.text())
                 sub=self.dict_checked_all.pop(str(item_sub.text()),None)
-                
-                #print sub
-                root=self.main_ui.tree_sessions.invisibleRootItem()
-                for sess in sub:
-                    #print sub[sess][0]
-                    for index in range(root.childCount()):
-                        if root.child(index).text(0)==sub[sess][0]:
-                            for ind2 in range(root.child(index).childCount()):
-                                if root.child(index).child(ind2).text(0)==sess:
-                                    root.child(index).removeChild(root.child(index).child(ind2))
-                                    if root.child(index).childCount()==0:
-                                        root.removeChild(root.child(index))
-                                    break
-                            break
+                if sub:
+                    #print sub
+                    root=self.main_ui.tree_sessions.invisibleRootItem()
+                    for sess in sub:
+                        #print sub[sess][0]
+                        for index in range(root.childCount()):
+                            if root.child(index).text(0)==sub[sess][0]:
+                                for ind2 in range(root.child(index).childCount()):
+                                    if root.child(index).child(ind2).text(0)==sess:
+                                        root.child(index).removeChild(root.child(index).child(ind2))
+                                        if root.child(index).childCount()==0:
+                                            root.removeChild(root.child(index))
+                                        break
+                                break
             self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;")) # f79f99 - Red
             self.main_ui.lbl_status.setText('  Ready')
 
@@ -1301,16 +1334,18 @@ class StartQT(QtWidgets.QMainWindow):
                     self.main_ui.lst_cmd.addItem(itm_cmd)
         self.identify_duplicate_paths()
 
-    def afni_clicked(self):
+    def prog2_clicked(self):
         """
         When Radio Button for AFNI is clicked
         """
+        #  self.sysConfig['process-cmd']['cache-location'][0]=os.path.expanduser("~")
         #Afni doesn't run on Windows
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
         self.d_format=2
-        if self.prog_exists('Dimon'):
-            self.main_ui.edt_down_cmd.setText('Dimon -infile_pattern %Output-Dir%/* -dicom_org -gert_create_dataset -gert_to3d_prefix %File-Name% -gert_outdir %Output-Dir%')
-            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to Dimon")
+        # self.sysConfig['process-cmd'][2]
+        if self.prog_exists(self.sysConfig['process-cmd'][2][1].split()[0]): #Getting the first word - the command
+            self.main_ui.edt_down_cmd.setText(self.sysConfig['process-cmd'][2][1])
+            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to "+self.sysConfig['process-cmd'][2][1].split()[0])
             self.main_ui.edt_down_status.setStyleSheet("color: rgb(128,128,0);")
         else:
             self.main_ui.edt_down_cmd.setText(CUST_PROG_CONV)
@@ -1318,16 +1353,16 @@ class StartQT(QtWidgets.QMainWindow):
             self.main_ui.edt_down_status.setStyleSheet("color: rgb(255,0,0);")
         self.download_cmd_refresh()
     
-    def nifti_clicked(self):
+    def prog1_clicked(self):
         """
         When Radio Button for NIFTI is clicked
         """
         #Afni doesn't run on Windows
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
         self.d_format=3
-        if self.prog_exists('Dimon'):
-            self.main_ui.edt_down_cmd.setText('Dimon -infile_pattern %Output-Dir%/* -dicom_org -gert_create_dataset -gert_write_as_nifti -gert_to3d_prefix %File-Name% -gert_outdir %Output-Dir%')
-            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to Dimon")
+        if self.prog_exists(self.sysConfig['process-cmd'][1][1].split()[0]):
+            self.main_ui.edt_down_cmd.setText(self.sysConfig['process-cmd'][1][1])
+            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to "+self.sysConfig['process-cmd'][1][1].split()[0])
             self.main_ui.edt_down_status.setStyleSheet("color: rgb(128,128,0);")
         else:
             self.main_ui.edt_down_cmd.setText(CUST_PROG_CONV)
@@ -1336,18 +1371,19 @@ class StartQT(QtWidgets.QMainWindow):
         self.download_cmd_refresh()
         
     
-    def custom_clicked(self):
+    def prog3_clicked(self):
         """
         When Radio Button for Custom is clicked
         """
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
         self.d_format=4
-        if self.prog_exists('dcm2nii'):
-            if system()=='Windows':
-                self.main_ui.edt_down_cmd.setText('dcm2nii -e N -f Y -d N -p N -v N -g N %Output-Dir%\%File-Name%')
-            else:
-                self.main_ui.edt_down_cmd.setText('dcm2nii -e N -f Y -d N -p N -v N -g N %Output-Dir%/%File-Name%')
-            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to dcm2nii are correct")
+        if self.prog_exists(self.sysConfig['process-cmd'][3][1].split()[0]):
+#            if system()=='Windows':
+#                self.main_ui.edt_down_cmd.setText('dcm2nii -e N -f Y -d N -p N -v N -g N %Output-Dir%\%File-Name%')
+#            else:
+#                self.main_ui.edt_down_cmd.setText('dcm2nii -e N -f Y -d N -p N -v N -g N %Output-Dir%/%File-Name%')
+            self.main_ui.edt_down_cmd.setText(self.sysConfig['process-cmd'][3][1])
+            self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to "+self.sysConfig['process-cmd'][3][1].split()[0])
             self.main_ui.edt_down_status.setStyleSheet("color: rgb(255,140,0);")
         else:
             self.main_ui.edt_down_cmd.setText(CUST_PROG_CONV)
@@ -1365,17 +1401,54 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.edt_down_cmd.setText(os.path.join('%Output-Dir%','%File-Name%-######'))
         self.main_ui.edt_down_status.setStyleSheet("color: rgb(107,142,35);")
         self.download_cmd_refresh()
+        
+        
+    def search_subj(self,text):
+        detail_logger.debug('Searching for '+text+' in Subject List')
+        if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
+            self.PopupDlg("Please Select if you want to download Scans or Resources")
+        else:
+            text=text.replace(" ", "")
+            for index in range(self.main_ui.lst_subjects.count()):
+                if text in self.main_ui.lst_subjects.item(index).text() and text !="":
+                    self.main_ui.lst_subjects.item(index).setBackground(QtGui.QColor(200,255,200))
+                else:
+                    self.main_ui.lst_subjects.item(index).setBackground(QtGui.QColor(255,255,255))
+        
+    def search_subjB(self,text):
+        detail_logger.debug('Searching for '+text+' in Subject List')
+        if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
+            self.PopupDlg("Please Select if you want to download Scans or Resources")
+        else:
+            text=text.replace(" ", "")
+            for index in range(self.main_ui.lst_subjectsB.count()):
+                if text in self.main_ui.lst_subjectsB.item(index).text() and text !="":
+                    self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(200,255,200))
+                else:
+                    self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(255,255,255))
+
+    def search_sess(self,text):
+        """
+        Incomplete
+        """
+        pass
+        
+    def search_comp_stat(self,text):
+        """
+        Incomplete
+        """
+        pass
                     
     def prog_exists(self,prog_name): 
         """
         Checking if the program exists in the environment
         """
-        try:
-            devnull = open(os.devnull)
-            subprocess.Popen([prog_name],stdout=devnull,stderr=devnull).communicate()
-        except OSError as e:
-            if e.errno == os.errno.ENOENT:
-                return False
+#        try:
+#            devnull = open(os.devnull)
+#            subprocess.Popen([prog_name],stdout=devnull,stderr=devnull).communicate()
+#        except OSError as e:
+#            if e.errno == os.errno.ENOENT:
+#                return False
         return True
 
     def refresh_page4(self):
@@ -1478,7 +1551,25 @@ class StartQT(QtWidgets.QMainWindow):
             self.fl_refresh_page6=False
             self.refresh_page6()
             
-        
+
+    def export_to_csv(self):
+        """
+        Export the TableView from the Export tab to a csv file
+        """
+        path,ftype = QtWidgets.QFileDialog.getSaveFileName(self,'Save File','','CSV(*.csv)')
+        #print(path) # Gives a tuple ('C:/Path/to/Dest/blah.csv', 'CSV(*.csv)')
+        if path:
+            with open(path, 'w') as stream:
+                writer = csv.writer(stream)
+                for row in range(self.main_ui.tableView.model().rowCount(self)):
+                    print(self.main_ui.tableView.model().data(row,0))  #second arg is DisplayRole
+                writer.writerow(['hello','how are'])
+
+    def export_to_xlsx(self):
+        """
+        Export the TableView from the Export tab to an excel file
+        """
+        path = QtWidgets.QFileDialog.getSaveFileName(self,'Save File','','XLSX(*.xlsx)')
         
     def sign_in(self):
         """
@@ -1862,8 +1953,6 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_upload.setEnabled(False)
         
         
-        
-        
     def strip_sub_id(self,subj,sess):
         return str(str(sess).replace(str(subj),"").strip('-').strip('_').strip('(').strip(')'))
     def strip_tail(self,str_strip):
@@ -1992,7 +2081,10 @@ class StartQT(QtWidgets.QMainWindow):
         """
         Removing Directories cleanly if they exist
         """
-        if not os.path.exists(path):
+        global detail_logger
+        detail_logger.setLevel(logging.INFO)
+        detail_logger.info("Removing Directory: "+path)
+        if os.path.exists(path):
             try:
                 shutil.rmtree(path) #,ignore_errors=True)
                 return True
@@ -2106,10 +2198,10 @@ class MyTableModel(QtCore.QAbstractTableModel):
     def data(self,index,role):
         if not index.isValid():
             return None
-        elif role !=QtCore.Qt.DisplayRole:
+        elif role !=QtCore.Qt.DisplayRole:  #DisplayRole's value is 0. So, this alyways set to 0
             return None
         return self.mylist[index.row()][index.column()]
-    def headerData(self,col,orientation,role):
+    def headerData(self,col,orientation,role):  # Display Role: http://doc.qt.io/qt-5/qt.html#ItemDataRole-enum
         if orientation ==QtCore.Qt.Horizontal and role==QtCore.Qt.DisplayRole:
             return self.header[col]
         return None
@@ -2146,9 +2238,9 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
     
     #items in jobDefs - 0: Download Format
     #                 - 1: Download directory
-    #                 - 2: DOwnload filename
+    #                 - 2: Download filename
     #                 - 3: main resource URI 
-    #                 - 4: download structure
+    #                 - 4: download structure  w/ conversion commmand if asked
     #                 - 5: Counter
     print(detail_logger.getEffectiveLevel())
     if jobDefs[0]==1:
@@ -2162,7 +2254,6 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
             except os.error as e:
                 if e.errno !=errno.EEXIST:
                     raise
-        
         # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
         # Compared it to downloading each file one at a time, and it is considerably slower.
         detail_logger.info('GET :%s'%jobDefs[3])
@@ -2170,24 +2261,50 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
         XConn=XnatRest(host,uname,passwd,False)
         if XConn.getZip(jobDefs[3],jobDefs[1],jobDefs[2]):
             return cleanUpDownload(jobDefs[1],jobDefs[2])
-            
         else:
             return [False,"Failed GET: "+jobDefs[3]] #Will fail if 404 in GET (or any issues with GET)
-    elif jobDefs[0]==2:
-        #Converting to AFNI after downloading
-        print ("Got 2 for >>>: %s"%jobDefs[1])
-        return "Success: "+jobDefs[3]
-        
-    elif jobDefs[0]==3:
-        #Converting to NIFTI after downloading
+#    elif jobDefs[0]==2:
+#        #Converting to AFNI after downloading
+#        print ("Got 2 for >>>: %s"%jobDefs[1])
+#        return "Success: "+jobDefs[3]
+#        
+#    elif jobDefs[0]==3:
+#        #Converting to NIFTI after downloading
+#        print ("Got 3 for >>>: %s"%jobDefs[1])
+#        return "Success: "+jobDefs[3]
+#    elif jobDefs[0]==3:
+    else:
+        #Run conversion script after downloading
         print ("Got 3 for >>>: %s"%jobDefs[1])
-        return "Success: "+jobDefs[3]
-    elif jobDefs[0]==3:
-        #Run custom script after downloading
-        print ("Got 3 for >>>: %s"%jobDefs[1])
+        if not os.path.exists(os.path.join(jobDefs[1],"RAW")):
+            try:
+                os.makedirs(os.path.join(jobDefs[1],"RAW"))
+            except os.error as e:
+                if e.errno !=errno.EEXIST:
+                    raise  #Catch all errors and move on to the next download
+        # Getting resources as zip and exploding them seems like a faster way to retrieve files at this time. 
+        # Compared it to downloading each file one at a time, and it is considerably slower.
+        detail_logger.info('GET :%s'%jobDefs[3])
+        #Creating new connection object.
+        XConn=XnatRest(host,uname,passwd,False)
+        if XConn.getZip(jobDefs[3],os.path.join(jobDefs[1],"RAW"),jobDefs[2]):
+            dir_to_delete= cleanUpDownload(os.path.join(jobDefs[1],"RAW"),jobDefs[2])
+            ret_var=runCommand(jobDefs[4],os.path.join(jobDefs[1],"RAW"),jobDefs[2][:-4],jobDefs[1])  #The [:-4]  in the filename is to remove the .zip tail.
+            return dir_to_delete
+        else:
+            return [False,"Failed GET: "+jobDefs[3]] #Will fail if 404 in GET (or any issues with GET)
         return "Success: "+jobDefs[3]
         
     return "Failed: "+jobDefs[3]
+
+def runCommand(cmd,in_path,filename,out_path):
+    """
+    
+    """
+    print(cmd+" || "+in_path +" || "+filename+" || "+out_path)
+    
+    
+    #Replacing %Out-Dir% with in_path , %File-Name% with filename
 
 def cleanUpDownload(path,filename):
     """
@@ -2198,10 +2315,12 @@ def cleanUpDownload(path,filename):
     """
     global detail_logger
     detail_logger.debug('Cleaning up after download: %s'%path)
+    print('Cleaning up after download: %s'%path)
     #TODO: COnsider the situation : DICOM & SNAPSHOTS is selected but scan 1 doesn't have SNAPSHOTS resource. -> getZip gives Oops Error code 404
     if os.path.isfile(os.path.join(path,filename)):
         #Need a try except block for the zipfile stuff
         detail_logger.debug('Unzipping: %s'%path)
+        print('Unzipping: %s'%path)
         zipFileName=zipfile.ZipFile(os.path.join(path,filename))
         zipFileName.extractall(path)
         allFiles=zipFileName.namelist()
@@ -2211,11 +2330,13 @@ def cleanUpDownload(path,filename):
         #print(allFiles)
         #Adding try block here doesn't seem necessary , as yet. 
         detail_logger.debug('Deleting file: %s'%os.path.join(path,filename))
+        print('Deleting file: %s'%os.path.join(path,filename))
         os.remove(os.path.join(path,filename))
         
         #Flag to check if all files moved successfully
         f_renamed=True
         detail_logger.debug('Moving files to the right location: %s'%path)
+        print('Moving files to the right location: %s'%path)
         for aFile in allFiles:
             fPath=aFile.split('/')
             try: #filename[:-4] to remove the .zip extension from the name
@@ -2227,6 +2348,7 @@ def cleanUpDownload(path,filename):
                 detail_logger.error(e)
                 #raise #Do logging instead of raising
         detail_logger.debug('Deleting unnecessary directories under: %s'%path)     
+        print('Deleting unnecessary directories under: %s'%path)
         if f_renamed: #If all files successfully moved, then delete the directory
             try:
                 # A bit of a risky thing to do. But o well. :) Deleting till resource name. 
@@ -2245,7 +2367,6 @@ def cleanUpDownload(path,filename):
                     print(e)
                     detail_logger.error(e)
                 return [False,os.path.join(path,allFiles[0].split('/')[0])]
-
 
 if __name__ == "__main__":
     

@@ -6,7 +6,6 @@
 #
 #
 #############
-
 sys-init:
   host: "https://cerebra.nida.nih.gov"
   #parallel processing with multi-threading(T) or multi-processing (P) - Two possible values T or P. P - uses spreads it across multiple cores.
@@ -46,7 +45,20 @@ sys-init:
     - "#CCFFE5"
     - "#CCCCFF"
     - "#FFCCE5"
-
+# Conversion Commands on 'Download' UI. The "%Output-Dir%" will be replaced by the selected output directory path, %Input-Dir% will be internally determined based on downloaded files, and "%File-Name% will be replaced by chosen File-name in the 'Destination' UI.
+process-cmd:
+  0:
+    - "DICOM"
+    - "%Output-Dir%\\%File-Name%-######"
+  1:
+    - "NIFTI"
+    - "Dimon -infile_pattern %Input-Dir%/* -dicom_org -gert_create_dataset -gert_write_as_nifti -gert_to3d_prefix %File-Name% -gert_outdir %Output-Dir%"
+  2:
+    - "AFNI"
+    - "Dimon -infile_pattern %Input-Dir%/* -dicom_org -gert_create_dataset -gert_to3d_prefix %File-Name% -gert_outdir %Output-Dir%"
+  3:
+    - "Custom"
+    - "dcm2nii -e N -f Y -d N -p N -v N -g N %Input-Dir%\\%File-Name%"
 down-init:
   nfs-mnt: "/.NFS/xnat"
   pathprefix-linux: "/prot/%PROJ%"

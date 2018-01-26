@@ -31,6 +31,7 @@ import shutil
 import concurrent.futures
 import logging
 from time import strftime
+from xlsxwriter import Workbook
 
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
@@ -1559,17 +1560,32 @@ class StartQT(QtWidgets.QMainWindow):
         path,ftype = QtWidgets.QFileDialog.getSaveFileName(self,'Save File','','CSV(*.csv)')
         #print(path) # Gives a tuple ('C:/Path/to/Dest/blah.csv', 'CSV(*.csv)')
         if path:
-            with open(path, 'w') as stream:
+            with open(path, 'w',newline='') as stream:
                 writer = csv.writer(stream)
+                writer.writerow(self.main_ui.tableView.model().getHeaderRow())
                 for row in range(self.main_ui.tableView.model().rowCount(self)):
-                    print(self.main_ui.tableView.model().data(row,0))  #second arg is DisplayRole
-                writer.writerow(['hello','how are'])
+                    writer.writerow(self.main_ui.tableView.model().getDataRow(row))
+                    #print(self.main_ui.tableView.model().data(row,0))  #second arg is DisplayRole
+                #writer.writerow(['hello','how are'])
+        self.PopupDlg("Export to CSV complete")
 
     def export_to_xlsx(self):
         """
         Export the TableView from the Export tab to an excel file
         """
-        path = QtWidgets.QFileDialog.getSaveFileName(self,'Save File','','XLSX(*.xlsx)')
+        path,ftype = QtWidgets.QFileDialog.getSaveFileName(self,'Save File','','XLSX(*.xlsx)')
+        workbook = Workbook(path)
+        worksheet = workbook.add_worksheet()
+        
+        for col in range(len(self.main_ui.tableView.model().getHeaderRow())):
+            worksheet.write(0,col,self.main_ui.tableView.model().getHeaderRow()[col])
+
+        for row in range(self.main_ui.tableView.model().rowCount(self)):
+            rowData=self.main_ui.tableView.model().getDataRow(row)
+            for col in range(len(rowData)):
+                worksheet.write(row+1,col,rowData[col])
+        workbook.close()
+        self.PopupDlg("Export to XLSX complete")
         
     def sign_in(self):
         """
@@ -2114,15 +2130,18 @@ class StartQT(QtWidgets.QMainWindow):
         
                       
     def DownloadWarningMultipleResources(self,res_list):
-       msg = QtWidgets.QMessageBox()
-       msg.setIcon(QtWidgets.QMessageBox.Warning)
-       msg.setText("Sure ??")
-       msg.setInformativeText("You have selected multiple resource types. Are you sure?")
-       msg.setWindowTitle("Multiple Resources WARNING")
-       msg.setDetailedText("You have Checked Multiple resources.\nThis would make multiple directories :%s  , under the scan directory.\n Would you like to continue?" %(",".join(res_list)))
-       msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
-       #msg.buttonClicked.connect(self.MsgBoxBtn)
-       return msg.exec_()
+        """
+        A popup dialogbox for warning that you picked multiple resources to download, so a few directories will be automatically created.
+        """
+        msg = QtWidgets.QMessageBox()
+        msg.setIcon(QtWidgets.QMessageBox.Warning)
+        msg.setText("Sure ??")
+        msg.setInformativeText("You have selected multiple resource types. Are you sure?")
+        msg.setWindowTitle("Multiple Resources WARNING")
+        msg.setDetailedText("You have Checked Multiple resources.\nThis would make multiple directories :%s  , under the scan directory.\n Would you like to continue?" %(",".join(res_list)))
+        msg.setStandardButtons(QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel)
+        #msg.buttonClicked.connect(self.MsgBoxBtn)
+        return msg.exec_()
                       
     def DownloadMsgBox(self,dformat):
        if dformat==1:
@@ -2201,10 +2220,14 @@ class MyTableModel(QtCore.QAbstractTableModel):
         elif role !=QtCore.Qt.DisplayRole:  #DisplayRole's value is 0. So, this alyways set to 0
             return None
         return self.mylist[index.row()][index.column()]
+    def getDataRow(self,rowIndex):
+        return self.mylist[rowIndex]
     def headerData(self,col,orientation,role):  # Display Role: http://doc.qt.io/qt-5/qt.html#ItemDataRole-enum
         if orientation ==QtCore.Qt.Horizontal and role==QtCore.Qt.DisplayRole:
             return self.header[col]
         return None
+    def getHeaderRow(self):
+        return self.header
     def sort(self,col,order):
         """
         Sort table by given column number

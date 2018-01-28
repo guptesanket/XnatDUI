@@ -224,7 +224,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.selected_uniq_scans={}      
 
         #For Download Tab        
-        self.d_format=1  #1=DCM, 2=AFNI , 3=NIFTI, 4=CUSTOM
+        self.d_format=1  #1=DCM, 2=NIFTI , 3=AFNI, 4=CUSTOM
         self.main_ui.rb_dcm.setChecked(True)
         self.download_begin=0  #Flag to start downloading        
         
@@ -286,7 +286,11 @@ class StartQT(QtWidgets.QMainWindow):
             detail_logger.debug('Found Duplicate paths. Failed to Initiate Download')
         else:
             D_Flag=1024 #1024 = 0x00000400  , the message sent when OK is pressed
-            if len(self.getCheckedResourceLabels())>1:
+            if len(self.getCheckedResourceLabels())>1 and self.d_format !=1:
+                detail_logger.debug('Multiple Resource CheckBoxes selected. Cannot run command on multiple resources !')
+                self.PopupDlg("Cannot run conversion/command on multiple resources. Please select single resource type !!")
+                D_Flag=1000
+            elif len(self.getCheckedResourceLabels())>1 and self.d_format ==1:
                 detail_logger.debug('Multiple Resource CheckBoxes selected. Making a separate Directories for each Resource')
                 D_Flag=self.DownloadWarningMultipleResources(self.getCheckedResourceLabels())
             if D_Flag==1024:
@@ -1342,7 +1346,7 @@ class StartQT(QtWidgets.QMainWindow):
         #  self.sysConfig['process-cmd']['cache-location'][0]=os.path.expanduser("~")
         #Afni doesn't run on Windows
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
-        self.d_format=2
+        self.d_format=3
         # self.sysConfig['process-cmd'][2]
         if self.prog_exists(self.sysConfig['process-cmd'][2][1].split()[0]): #Getting the first word - the command
             self.main_ui.edt_down_cmd.setText(self.sysConfig['process-cmd'][2][1])
@@ -1360,7 +1364,7 @@ class StartQT(QtWidgets.QMainWindow):
         """
         #Afni doesn't run on Windows
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
-        self.d_format=3
+        self.d_format=2
         if self.prog_exists(self.sysConfig['process-cmd'][1][1].split()[0]):
             self.main_ui.edt_down_cmd.setText(self.sysConfig['process-cmd'][1][1])
             self.main_ui.edt_down_status.setText("Status: Please confirm the arguments to "+self.sysConfig['process-cmd'][1][1].split()[0])
@@ -1444,12 +1448,12 @@ class StartQT(QtWidgets.QMainWindow):
         """
         Checking if the program exists in the environment
         """
-#        try:
-#            devnull = open(os.devnull)
-#            subprocess.Popen([prog_name],stdout=devnull,stderr=devnull).communicate()
-#        except OSError as e:
-#            if e.errno == os.errno.ENOENT:
-#                return False
+        try:
+            devnull = open(os.devnull)
+            subprocess.Popen([prog_name],stdout=devnull,stderr=devnull).communicate()
+        except OSError as e:
+            if e.errno == os.errno.ENOENT:
+                return False
         return True
 
     def refresh_page4(self):
@@ -1678,7 +1682,7 @@ class StartQT(QtWidgets.QMainWindow):
     
     def res_type_checked(self):
         """
-        When any of the resources checkboxes are checked/Unchecked
+        When any of the resources checkboxes are checked/Unchecked. Kind of redundant, but I had more plans for it. :(
         """
         self.scan_quality_checked()
         
@@ -1856,6 +1860,9 @@ class StartQT(QtWidgets.QMainWindow):
         pass
 
     def reset_internal(self):
+        """
+        Reset all the variables. Empty the dictionaries and lists, clear the UI elements etc.
+        """
         if self.main_ui.rb_sel_download.isChecked():
             self.prep_download()
         elif self.main_ui.rb_sel_upload.isChecked():
@@ -2144,14 +2151,17 @@ class StartQT(QtWidgets.QMainWindow):
         return msg.exec_()
                       
     def DownloadMsgBox(self,dformat):
+       """
+       Confirmation Message Box before the download begins
+       """
        if dformat==1:
-           dfformat='DICOM'
+           dfformat=self.sysConfig['process-cmd'][0][0]
        elif dformat==2:
-           dfformat='AFNI'
+           dfformat=self.sysConfig['process-cmd'][1][0]
        elif dformat==3:
-           dfformat='NIFTI'
+           dfformat=self.sysConfig['process-cmd'][2][0]
        elif dformat==4:
-           dfformat='CUSTOM'
+           dfformat=self.sysConfig['process-cmd'][3][0]
        msg = QtWidgets.QMessageBox()
        msg.setIcon(QtWidgets.QMessageBox.Information)
        msg.setText("READY ??")
@@ -2322,12 +2332,18 @@ def downloadRequest(host,uname,passwd,jobDefs): #To run this with download_async
 
 def runCommand(cmd,in_path,filename,out_path):
     """
-    
+    Create a child thread that executes the asked command in the shell
     """
-    print(cmd+" || "+in_path +" || "+filename+" || "+out_path)
-    
-    
-    #Replacing %Out-Dir% with in_path , %File-Name% with filename
+    #full_cmd=cmd.replace("%Output-Dir%",out_path).replace("%Input-Dir%",in_path).replace("%File-Name%",filename)
+    #print(full_cmd.split())
+
+    try:
+        #print(subprocess.run(full_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True).stdout.decode('utf-8'))
+        print(subprocess.run(cmd.replace("%Output-Dir%",out_path).replace("%Input-Dir%",in_path).replace("%File-Name%",filename).split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,shell=True).stdout.decode('utf-8'))
+    except OSError as e:
+        if e.errno == os.errno.ENOENT:
+            return False
+    return True
 
 def cleanUpDownload(path,filename):
     """

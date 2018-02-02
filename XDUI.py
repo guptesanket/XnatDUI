@@ -1183,6 +1183,10 @@ class StartQT(QtWidgets.QMainWindow):
         self.fl_refresh_page6=True
         
         self.populate_subjects()
+        
+    def refresh_page1B(self):
+        
+        pass #Nothing much to do. Yet. Might be useful in the future. 
             
             
     def refresh_page2(self):
@@ -1341,7 +1345,7 @@ class StartQT(QtWidgets.QMainWindow):
 
     def prog2_clicked(self):
         """
-        When Radio Button for AFNI is clicked
+        When Radio Button for Program2 from xnat_config.yaml file is clicked
         """
         #  self.sysConfig['process-cmd']['cache-location'][0]=os.path.expanduser("~")
         #Afni doesn't run on Windows
@@ -1360,7 +1364,7 @@ class StartQT(QtWidgets.QMainWindow):
     
     def prog1_clicked(self):
         """
-        When Radio Button for NIFTI is clicked
+        When Radio Button for Program1 from xnat_config.yaml file is clicked
         """
         #Afni doesn't run on Windows
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
@@ -1378,7 +1382,7 @@ class StartQT(QtWidgets.QMainWindow):
     
     def prog3_clicked(self):
         """
-        When Radio Button for Custom is clicked
+        When Radio Button for Program3 from xnat_config.yaml file is clicked
         """
         self.main_ui.grp_down_format.setStyleSheet(_fromUtf8("background-color:;"))
         self.d_format=4
@@ -1422,15 +1426,12 @@ class StartQT(QtWidgets.QMainWindow):
         
     def search_subjB(self,text):
         detail_logger.debug('Searching for '+text+' in Subject List')
-        if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
-            self.PopupDlg("Please Select if you want to download Scans or Resources")
-        else:
-            text=text.replace(" ", "")
-            for index in range(self.main_ui.lst_subjectsB.count()):
-                if text in self.main_ui.lst_subjectsB.item(index).text() and text !="":
-                    self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(200,255,200))
-                else:
-                    self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(255,255,255))
+        text=text.replace(" ", "")
+        for index in range(self.main_ui.lst_subjectsB.count()):
+            if text in self.main_ui.lst_subjectsB.item(index).text() and text !="":
+                self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(200,255,200))
+            else:
+                self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(255,255,255))
 
     def search_sess(self,text):
         """
@@ -1463,7 +1464,6 @@ class StartQT(QtWidgets.QMainWindow):
         pass
             
     def refresh_page5(self):
-
         header = ['Subject', 'Session', 'ScanID', 'ScanType','Quality']
         data_list=[]
         # 3 flags , Subj_checked, Sess_checked, Scan_checked
@@ -1505,8 +1505,7 @@ class StartQT(QtWidgets.QMainWindow):
         if self.fl_refresh_page1B:
             self.fl_refresh_page1B=False
             self.refresh_page1B()
-
-        
+            
     def page2_clicked(self):
         self.main_ui.stackedWidget.setCurrentIndex(1)
         global detail_logger
@@ -1782,7 +1781,7 @@ class StartQT(QtWidgets.QMainWindow):
 
             #Enabling Upload Tab
             #self.main_ui.btn_page4.setEnabled(True)
-    
+
         
     def index_proj_changed(self):
         """

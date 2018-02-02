@@ -7,7 +7,7 @@
 #
 #############
 sys-init:
-  host: "https://cerebra.nida.nih.gov"
+  host: "https://xnat2.nimh.nih.gov"
   #parallel processing with multi-threading(T) or multi-processing (P) - Two possible values T or P. P - uses spreads it across multiple cores.
   # P uses multiple CPU cores - more compute intensive. T - uses multi threads. 
   parallel: "P"
@@ -45,6 +45,8 @@ sys-init:
     - "#CCFFE5"
     - "#CCCCFF"
     - "#FFCCE5"
+
+# These programs need to be available on the system, to be available for conversion or processing.
 # Conversion Commands on 'Download' UI. The "%Output-Dir%" will be replaced by the selected output directory path, %Input-Dir% will be internally determined based on downloaded files, and "%File-Name% will be replaced by chosen File-name in the 'Destination' UI.
 process-cmd:
   0:

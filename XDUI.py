@@ -36,7 +36,7 @@ from xlsxwriter import Workbook
 #Headers for the Upload Tree
 SESS_HEADERS=('1','2','3','4')
 #Pre-set ComboBox translations for Path Creation screen
-CMBPATH=['PROJ','SUBJ','SESS','SCAN','SCANID']
+CMBPATH=['PROJ','SUBJ','SESS','SESSID','SCAN','SCANID']
 
 detail_logger = logging.getLogger('Xnat-Download-Upload-UI')
 hdlr = None
@@ -1265,6 +1265,7 @@ class StartQT(QtWidgets.QMainWindow):
 
             self.selected_uniq_scans[str(scan_grp.title())]=[str(grp_layout.itemAt(1).layout().itemAt(0).widget().text()),str(grp_layout.itemAt(1).layout().itemAt(1).widget().text())]
         
+        # The logic to replace the %VARIABLES% with their actual values.
         for subj in self.dict_checked_all:
             for sess in self.dict_checked_all[subj]:
                 for scan in self.dict_checked_all[subj][sess][1][1]: #Only Checked Scans
@@ -1282,6 +1283,8 @@ class StartQT(QtWidgets.QMainWindow):
                             dest_path+=str(subj)
                         elif dst_spl in ["session","sess","SESSION","SESS"]:
                             dest_path+=str(sess)
+                        elif dst_spl in ["sessionid","sessid","SESSIONID","SESSID"]:
+                            dest_path+=str(sess).replace(str(subj),"")
                         elif dst_spl in ["scan","SCAN"]:
                             dest_path+=str(scan_name)
                         elif dst_spl in ["scanid","SCANID"]:
@@ -1297,6 +1300,8 @@ class StartQT(QtWidgets.QMainWindow):
                             dst_c_fn+=str(subj)
                         elif dst_fn in ["session","sess","SESSION","SESS"]:
                             dst_c_fn+=str(sess)
+                        elif dst_fn in ["sessionid","sessid","SESSIONID","SESSID"]:
+                            dst_c_fn+=str(sess).replace(str(subj),"")
                         elif dst_fn in ["scan","SCAN"]:
                             dst_c_fn+=str(scan_name)
                         elif dst_fn in ["scanid","SCANID"]:
@@ -1305,7 +1310,7 @@ class StartQT(QtWidgets.QMainWindow):
                             dst_c_fn+=dst_fn
 
                     
-                    #Removing Whitespaces
+                    #Removing Whitespaces and other characters
                     dest_path=dest_path.translate(whitespace)
                     dst_c_fn=dst_c_fn.translate(whitespace)
                     dst_c_fn=dst_c_fn.replace('/','-')

@@ -644,10 +644,6 @@ class Ui_XnatDUI(object):
         self.edt_up_res.setMinimumSize(QtCore.QSize(0, 25))
         self.edt_up_res.setObjectName("edt_up_res")
         self.verticalLayout_16.addWidget(self.edt_up_res)
-        self.btn_up_res = QtWidgets.QPushButton(self.layoutWidget_5)
-        self.btn_up_res.setMinimumSize(QtCore.QSize(0, 25))
-        self.btn_up_res.setObjectName("btn_up_res")
-        self.verticalLayout_16.addWidget(self.btn_up_res)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
         self.verticalLayout_16.addItem(spacerItem)
         self.verticalLayout_15.addLayout(self.verticalLayout_16)
@@ -932,7 +928,7 @@ class Ui_XnatDUI(object):
         XnatDUI.setStatusBar(self.statusBar)
 
         self.retranslateUi(XnatDUI)
-        self.stackedWidget.setCurrentIndex(2)
+        self.stackedWidget.setCurrentIndex(3)
         QtCore.QMetaObject.connectSlotsByName(XnatDUI)
 
     def retranslateUi(self, XnatDUI):
@@ -1006,10 +1002,9 @@ class Ui_XnatDUI(object):
         self.edt_down_status.setText(_translate("XnatDUI", "Status: Ready"))
         self.btn_refresh_cmd.setText(_translate("XnatDUI", "Refresh"))
         self.btn_download.setText(_translate("XnatDUI", "   DOWNLOAD  "))
-        self.rb_up_res_existing.setText(_translate("XnatDUI", "Select Existing Type"))
-        self.rb_up_res_new.setText(_translate("XnatDUI", "Create New Type"))
+        self.rb_up_res_existing.setText(_translate("XnatDUI", "Select from Config"))
+        self.rb_up_res_new.setText(_translate("XnatDUI", "Create New Resource"))
         self.edt_up_res.setPlaceholderText(_translate("XnatDUI", "Enter new RESOURCE Name"))
-        self.btn_up_res.setText(_translate("XnatDUI", "Create New Resource"))
         self.btn_upload.setText(_translate("XnatDUI", "UPLOAD"))
         self.btn_export_csv.setText(_translate("XnatDUI", "Export to CSV"))
         self.btn_export_xlsx.setText(_translate("XnatDUI", "Export to XLSX"))

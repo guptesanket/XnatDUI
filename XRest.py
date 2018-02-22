@@ -3,6 +3,8 @@
 Created on Wed Jun  7 15:13:15 2017
 
 @author: Sanket Gupte
+
+A Simple Wrapper class for talking to Xnat using REST via requests package
 """
 import requests
 import os
@@ -38,6 +40,8 @@ class XnatRest:
     def getProjects(self):
         projects=self.get()
         proj_ids=[]
+        if projects==0:
+            return False
         for proj in projects:
             proj_ids.append(proj['ID'])
         return proj_ids
@@ -268,8 +272,7 @@ class XnatRest:
                 return 0
             else:
                 return result.json()['ResultSet']['Result']
-            
-            
+
     def _get(self,url):
         """
         Does a GET on the url
@@ -322,19 +325,74 @@ class XnatRest:
             return False
 #        except :
 #           print("Something went wrong")
+            
+    def putResourceFile(self,proj=None,subj=None,exp=None,scan=None,resid=None,file_path=None):#,download=False):
+        """
+        Does a PUT request according to the query
+        
+        """
+        result=0 #Remove this line
+        if not file_path: #This shouldn't happen. Unless something is really messed up
+            return 0
+        else:
+            queryArgs = {"content":resid,"reference":os.path.abspath(file_path)}
+        if proj==None:
+            url="/data/archive/projects"
+            #result=self._get(self.host+url+tail)
+            if result==0:
+                return 0
+            else:
+                return result.json()['ResultSet']['Result']
+        elif subj==None:
+            url="/data/archive/projects/"+proj+"/resources/"+resid+"/files"
+            #result=self._get(self.host+url+tail)
+            if result==0:
+                return 0
+            else:
+                return result.json()['ResultSet']['Result']
+        elif exp==None:
+            url="/data/archive/projects/"+proj+"/subjects/"+subj+"/resources/"+resid+"/files"
+            #result=self._get(self.host+url+tail)
+            print(url)
+            print(queryArgs)
+            if result==0:
+                return 0
+            else:
+                return result.json()['ResultSet']['Result']
+        elif scan==None:
+            url="/data/archive/projects/"+proj+"/subjects/"+subj+"/experiments/"+exp+"/resources/"+resid+"/files"
+            #result=self._get(self.host+url+tail)
+            if result==0:
+                return 0
+            else:
+                return result.json()['ResultSet']['Result']
+        elif scan is not None:
+            url="/data/archive/projects/"+proj+"/subjects/"+subj+"/experiments/"+exp+"/scans/"+scan+"/resources/"+resid+"/files"
+            #result=self._get(self.host+url+tail)
+            if result==0:
+                return 0
+            else:
+                return result.json()['ResultSet']['Result']
+            
+
 
     def _put(self,url,**kwargs):
         """
         Does a PUT on the url
         """
-        try:
-            r = self.intf.get( url, **kwargs )
-            r.raise_for_status()
-        except (requests.ConnectionError, requests.exceptions.RequestException) as e:
-            print ("Request Failed")
-            print ("    " + str( e ))
-            #sys.exit(1)
-        return r
+        if kwargs["proj"]==None:
+            print("Nooo")
+            
+        for key in kwargs:
+            print("{} and {}".format(key,kwargs[key]))
+#        try:
+#            r = self.intf.put( url, **kwargs )
+#            r.raise_for_status()
+#        except (requests.ConnectionError, requests.exceptions.RequestException) as e:
+#            print ("Request Failed")
+#            print ("    " + str( e ))
+#            #sys.exit(1)
+#        return r
 
     def putFile():
         queryArgs = {"format":"csv","content":"QC Data","reference":os.path.abspath(os.path.join(dicomdir, f_name))}

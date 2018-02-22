@@ -1,5 +1,7 @@
 # This is a configuration file for Xnat Download Upload UI .
 # If you dont know what you are doing, please dont modify this file.
+# If you dont know what you are doing, DEFINITELY DON'T DELETE ANYTHING in this file.
+# Unless you have evil intentions. In that case, start with changing/removing 1 character anywhere in the file.
 # Config for XnatDUI.py 
 
 #############
@@ -7,7 +9,7 @@
 #
 #############
 sys-init:
-  host: "https://xnat2.nimh.nih.gov"
+  host: "https://cerebra.nida.nih.gov"
   #parallel processing with multi-threading(T) or multi-processing (P) - Two possible values T or P. P - uses spreads it across multiple cores.
   # P uses multiple CPU cores - more compute intensive. T - uses multi threads. 
   parallel: "P"
@@ -76,7 +78,15 @@ down-init:
   cleanup:
     - "dimon.files"
     - "GERT_Reco"
+
+# Default resource names to be shown in Upload UI
 upload-init:
-  res_names:
+  subj-res:
+    - "QC"
+    - "SubjLvlRes"
+  sess-res:
     - "MRSI"
+    - "SessLvlRes"
+  scan-res:
+    - "MRTaskData"
     - "TASKDATA"

@@ -525,7 +525,7 @@
         <number>1</number>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page_1">
         <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -1424,7 +1424,7 @@
              <item>
               <widget class="QRadioButton" name="rb_up_res_existing">
                <property name="text">
-                <string>Select Existing Type</string>
+                <string>Select from Config</string>
                </property>
               </widget>
              </item>
@@ -1443,7 +1443,7 @@
                <item>
                 <widget class="QRadioButton" name="rb_up_res_new">
                  <property name="text">
-                  <string>Create New Type</string>
+                  <string>Create New Resource</string>
                  </property>
                 </widget>
                </item>
@@ -1457,19 +1457,6 @@
                  </property>
                  <property name="placeholderText">
                   <string>Enter new RESOURCE Name</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QPushButton" name="btn_up_res">
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>25</height>
-                  </size>
-                 </property>
-                 <property name="text">
-                  <string>Create New Resource</string>
                  </property>
                 </widget>
                </item>

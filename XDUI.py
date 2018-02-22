@@ -33,8 +33,6 @@ import logging
 from time import strftime
 from xlsxwriter import Workbook
 
-#Headers for the Upload Tree
-SESS_HEADERS=('1','2','3','4')
 #Pre-set ComboBox translations for Path Creation screen
 CMBPATH=['PROJ','SUBJ','SESS','SESSID','SCAN','SCANID']
 
@@ -78,14 +76,14 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.setupUi(self)
         
         #Connect signals to buttons
-        self.main_ui.btn_page1.clicked.connect(self.page1_clicked)
-        self.main_ui.btn_page1B.clicked.connect(self.page1B_clicked)
-        self.main_ui.btn_page2.clicked.connect(self.page2_clicked)
-        self.main_ui.btn_page3.clicked.connect(self.page3_clicked)
-        #self.main_ui.btn_page3B.clicked.connect(self.page3B_clicked) #Dont need a button
-        self.main_ui.btn_page4.clicked.connect(self.page4_clicked)
-        self.main_ui.btn_page5.clicked.connect(self.page5_clicked)
-        self.main_ui.btn_page6.clicked.connect(self.page6_clicked)
+        self.main_ui.btn_page1.clicked.connect(self.page1_clicked) #Main Selection Page Tab
+        self.main_ui.btn_page1B.clicked.connect(self.page1B_clicked) #Main Selection Page for Export Only
+        self.main_ui.btn_page2.clicked.connect(self.page2_clicked) #Destination Tab
+        self.main_ui.btn_page3.clicked.connect(self.page3_clicked) #Download Tab
+        #self.main_ui.btn_page3B.clicked.connect(self.page3B_clicked) #Dont need a button - For export
+        self.main_ui.btn_page4.clicked.connect(self.page4_clicked) #Upload Tab
+        self.main_ui.btn_page5.clicked.connect(self.page5_clicked) #Export  Tab
+        self.main_ui.btn_page6.clicked.connect(self.page6_clicked) #Process Tab
         self.main_ui.btn_sysconfig.clicked.connect(self.loadConfig)
         self.main_ui.btn_reset.clicked.connect(self.reset_all_clicked)
         self.main_ui.btn_SignIn.clicked.connect(self.sign_in)
@@ -148,7 +146,10 @@ class StartQT(QtWidgets.QMainWindow):
         
         self.main_ui.lst_subjects.setEnabled(False)
         self.main_ui.tree_sessions.setEnabled(False)
+        self.main_ui.tree_sessions.setAnimated(True)
         self.main_ui.tree_scans.setEnabled(False)
+        self.main_ui.tree_scans.setAnimated(True)
+        self.main_ui.tree_scansB.setAnimated(True)
         #Connections to Subjects/Sessions/Scans List/Trees
         self.main_ui.lst_subjects.itemChanged.connect(self.click_sub)
         self.main_ui.lst_subjectsB.itemChanged.connect(self.click_subB)
@@ -172,6 +173,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.tree_scans.header().hide()
         self.main_ui.tree_scansB.header().hide()
         self.main_ui.tree_completion_status.header().hide()
+        self.main_ui.tree_completion_status.setAnimated(True)
         
         
         #Button Connections for Path making buttons
@@ -205,6 +207,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.rb_dcm.toggled.connect(self.dcm_clicked)
         self.main_ui.btn_refresh_cmd.clicked.connect(self.download_cmd_refresh)
         self.main_ui.btn_download.clicked.connect(self.download_clicked)
+        self.main_ui.btn_upload.clicked.connect(self.upload_clicked)
         
         #Variables with data
         self.curr_proj=None #Currently selected Xnat Project
@@ -532,18 +535,87 @@ class StartQT(QtWidgets.QMainWindow):
         
         if item.checkState(column) == QtCore.Qt.Checked:  #Checked
             detail_logger.debug('Scan %s Ticked'%item.text(0))
-            self.show_checked_scan_completion(item.text())
+            self.show_checked_scan_completion(item.text(0))
         elif item.checkState(column) == QtCore.Qt.Unchecked:  #Unchecked
             detail_logger.debug('Scan %s Unticked'%item.text(0))
-            self.remove_unchecked_scan_completion(item.text())
+            self.remove_unchecked_scan_completion(item.text(0))
         else:
             pass
 
 
     def show_checked_scan_completion(self,item):
-        pass
+        """
+        When a Scan is checked . Add sub-nodes and change colors.
+        """
+        cs_tree_root=self.main_ui.tree_completion_status.invisibleRootItem()
+        for index in range(cs_tree_root.childCount()):
+            sc_done= self.isScanDone(cs_tree_root.child(index).text(0),item)
+            fl_exists=False
+            for ind2 in range(cs_tree_root.child(index).childCount()):
+                if cs_tree_root.child(index).child(ind2).text(0)==item:
+                    fl_exists=True
+                    if sc_done:
+                        cs_tree_root.child(index).child(ind2).setBackground(0,QtGui.QColor(230, 255, 230))
+                    else:
+                        cs_tree_root.child(index).child(ind2).setBackground(0,QtGui.QColor(255,230,230))
+                    
+                    #Change Color
+            if not fl_exists:    
+                new_kid=QtWidgets.QTreeWidgetItem(cs_tree_root.child(index))
+                new_kid.setText(0,item)
+                #new_kid.setBackground(QtGui.QBrush(QtGui.QColor(200,255,200)))
+                if sc_done:
+                    new_kid.setBackground(0,QtGui.QColor(230, 255, 230))
+                else:
+                    new_kid.setBackground(0,QtGui.QColor(255,230,230))
+        self.refresh_scan_completion()
+
+    def refresh_scan_completion(self):
+        """
+        Check if all scans in tree_completion_status are green for each Subject. And change color accordingly
+        """
+        cs_tree_root=self.main_ui.tree_completion_status.invisibleRootItem()
+        for index in range(cs_tree_root.childCount()):
+            fl_foundRed=False
+            for ind2 in range(cs_tree_root.child(index).childCount()):
+                if cs_tree_root.child(index).child(ind2).background(0)==QtGui.QColor(255,230,230):
+                    fl_foundRed=True
+                    break
+            if fl_foundRed:
+                cs_tree_root.child(index).setBackground(0,QtGui.QColor(255,180,180))
+            else:
+                cs_tree_root.child(index).setBackground(0,QtGui.QColor(200,255,200))
+
+            
+    def isScanDone(self,subj,scan):
+        """
+        Checks Whether this Subject has done this scan
+        """
+        for sess in self.tree_all[subj]:
+            for scan_id,sc_detail in self.tree_all[subj][sess]['scans'].items():
+                if sc_detail['type']==scan:
+                    #print("{} Has Finished {}".format(subj,scan))
+                    return True
+        return False
+#            for k2,v2 in self.dict_checked_all[subj][k][1][0].items():
+#                print(v2)
+#            for k2,v2 in self.dict_checked_all[subj][k][1][1].items():
+#                print(v2)
+#        for sess in self.dict_checked_all[subj]:
+#            for sessID in self.dict_checked_all[subj][sess]:
+#                print(self.dict_checked_all[subj][sess][sessID])
+#                for scan_id,scan_name in self.dict_checked_all[subj][sess][sessID][0].values():
+#                    if scan_name==scan:
+#                        print("{} Has Finished {}".format(subj,scan))
+    
     def remove_unchecked_scan_completion(self,item):
-        pass
+        cs_tree_root=self.main_ui.tree_completion_status.invisibleRootItem()
+        for index in range(cs_tree_root.childCount()):
+            for ind2 in range(cs_tree_root.child(index).childCount()):
+                if cs_tree_root.child(index).child(ind2).text(0)==item:
+                    cs_tree_root.child(index).removeChild(cs_tree_root.child(index).child(ind2))
+                    break
+        self.refresh_scan_completion()
 
     
     def handle_scan(self,item,column):
@@ -826,7 +898,7 @@ class StartQT(QtWidgets.QMainWindow):
             if root.child(index).text(0)==scan_type:
                 new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
                 new_kid.setText(0,sess)
-                new_kid.setStatusTip(0,scan_id)
+                new_kid.setToolTip(0,scan_id)
                 flag=1
                 break
         if flag==0:
@@ -836,7 +908,7 @@ class StartQT(QtWidgets.QMainWindow):
             parent.setCheckState(0,QtCore.Qt.Unchecked)
             child = QtWidgets.QTreeWidgetItem(parent)
             child.setText(0,sess)
-            child.setStatusTip(0,scan_id)
+            child.setToolTip(0,scan_id)
     def remove_frm_scan_tree_res(self,subj,sess,res_lbl):
         """
         Remove entries from the scan tree - Resources are picked
@@ -847,7 +919,7 @@ class StartQT(QtWidgets.QMainWindow):
         for index in range(root.childCount()):
             if root.child(index).text(0)==scan_type:
                 for ind2 in range(root.child(index).childCount()):
-                    if root.child(index).child(ind2).text(0)==sess and root.child(index).child(ind2).statusTip(0)==scan_id:
+                    if root.child(index).child(ind2).text(0)==sess and root.child(index).child(ind2).toolTip(0)==scan_id:
                         root.child(index).removeChild(root.child(index).child(ind2))
                         if root.child(index).childCount()==0:
                             root.removeChild(root.child(index))
@@ -855,6 +927,10 @@ class StartQT(QtWidgets.QMainWindow):
                 break
 
     def sess_scan_rb_selected(self):
+        """
+        Radio Button 'Scans' above Session Tree is selected
+        """
+        self.fl_refresh_page4=True
         self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:;"))
         if self.main_ui.rb_sess_scans.isChecked():
             self.main_ui.grp_scan_quality.setVisible(True)
@@ -867,7 +943,11 @@ class StartQT(QtWidgets.QMainWindow):
                 self.fl_sessions_selection=0       
     
     def sess_res_rb_selected(self):
+        """
+        Radio Button 'Resources' above Session Tree is selected
+        """
         self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:;"))
+        self.fl_refresh_page4=True
         if self.main_ui.rb_sess_res.isChecked():
             self.main_ui.grp_scan_quality.setVisible(False)
             self.main_ui.lbl_scan.setVisible(False)
@@ -878,11 +958,17 @@ class StartQT(QtWidgets.QMainWindow):
                 self.fl_sessions_selection=1       
 
     def subj_sess_rb_selected(self):
+        """
+        Radio Button 'Sessions' above Subjects List is selected
+        """
+        self.fl_refresh_page4=True
         self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:;"))
         if not self.main_ui.lst_subjects.isEnabled() and (self.main_ui.rb_sess_scans.isChecked() or self.main_ui.rb_sess_res.isChecked()):
             self.main_ui.lst_subjects.setEnabled(True)
+            self.main_ui.tree_scans.clear()
         else:
             self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
+            self.main_ui.tree_scans.clear()
         if self.main_ui.rb_subj_sess.isChecked():
             #print("Sessions Selected")
             self.main_ui.grp_scan_quality.setVisible(True)
@@ -894,9 +980,18 @@ class StartQT(QtWidgets.QMainWindow):
                 self.fl_subjects_selection=0
 
     def subj_res_rb_selected(self):
+        """
+        Radio Button 'Resources' above Subjects List is selected
+        """
+        self.fl_refresh_page4=True
         self.main_ui.grp_subj_select.setStyleSheet(_fromUtf8("background-color:;"))
         if not self.main_ui.lst_subjects.isEnabled() :#and (self.main_ui.rb_sess_scans.isChecked() or self.main_ui.rb_sess_res.isChecked()):
             self.main_ui.lst_subjects.setEnabled(True)
+            self.main_ui.tree_scans.setEnabled(True)
+            self.main_ui.tree_scans.clear()
+        else:
+            self.main_ui.tree_scans.clear()
+            
         #Clear the Resource checkboxes
 #        else:
 #            self.main_ui.grp_sess_select.setStyleSheet(_fromUtf8("background-color:#e0ffba;"))
@@ -905,6 +1000,7 @@ class StartQT(QtWidgets.QMainWindow):
             self.main_ui.grp_scan_quality.setVisible(False)
             self.main_ui.lbl_scan.setVisible(False)
             self.main_ui.vf_sessions.setVisible(False)
+            self.fl_refresh_page4=True
             if self.fl_subjects_selection==None: #Fresh start
                 self.fl_subjects_selection=1                
             elif self.fl_subjects_selection==0: #Switching from 0 to 1
@@ -920,8 +1016,16 @@ class StartQT(QtWidgets.QMainWindow):
             #Item is Checked - checkState is True
             self.main_ui.pb_inter.setValue(0)
             #Add to the Completion Status Tree
-            TCparent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_completion_status)
-            TCparent.setText(0,item_sub.text())
+            fl_exists=False
+            cs_tree_root=self.main_ui.tree_completion_status.invisibleRootItem()
+            for index in range(cs_tree_root.childCount()):
+                if cs_tree_root.child(index).text(0)==item_sub.text():
+                    fl_exists=True
+                    break
+                    
+            if not fl_exists:
+                TCparent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_completion_status)
+                TCparent.setText(0,item_sub.text())
             
             root=self.main_ui.tree_scansB.invisibleRootItem() #Getting the scan-tree root
             detail_logger.debug('Subject %s Ticked'%item_sub.text())
@@ -957,7 +1061,7 @@ class StartQT(QtWidgets.QMainWindow):
                                     new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
                                     new_kid.setText(0,exp['label'])
                                     #new_kid.setText(1,item_sub.text())
-                                    new_kid.setStatusTip(0,item_sub.text())
+                                    new_kid.setToolTip(0,item_sub.text())
                                     flag=1
                                     break
                             if flag==0:
@@ -968,7 +1072,7 @@ class StartQT(QtWidgets.QMainWindow):
                                 child = QtWidgets.QTreeWidgetItem(parent)
                                 child.setText(0,exp['label'])
                                 #child.setText(1,item_sub.text())
-                                child.setStatusTip(0,item_sub.text())
+                                child.setToolTip(0,item_sub.text())
                                           
             else: #If already pulled
                 for sess in self.tree_all[str(item_sub.text())]: 
@@ -989,7 +1093,7 @@ class StartQT(QtWidgets.QMainWindow):
                                     new_kid=QtWidgets.QTreeWidgetItem(root.child(index))
                                     new_kid.setText(0,exp['label'])
                                     #new_kid.setText(1,item_sub.text())
-                                    new_kid.setStatusTip(0,item_sub.text())
+                                    new_kid.setToolTip(0,item_sub.text())
                                     flag=1
                                     break
                             if flag==0:
@@ -1000,7 +1104,7 @@ class StartQT(QtWidgets.QMainWindow):
                                 child = QtWidgets.QTreeWidgetItem(parent)
                                 child.setText(0,exp['label'])
                                 #child.setText(1,item_sub.text())
-                                child.setStatusTip(0,item_sub.text())
+                                child.setToolTip(0,item_sub.text())
                         
             self.main_ui.pb_inter.setValue(95)
             self.dict_checked_all[str(item_sub.text())]={}
@@ -1010,6 +1114,7 @@ class StartQT(QtWidgets.QMainWindow):
 
             self.main_ui.pb_inter.setValue(100)
         else:  #Unchecked
+            #Something wrong here. Minor bug when Unchecking multiple subjects. 
             detail_logger.debug('Subject %s Unticked'%item_sub.text())
             
             #Remove from the Completion Status Tree
@@ -1024,15 +1129,15 @@ class StartQT(QtWidgets.QMainWindow):
             root=self.main_ui.tree_scansB.invisibleRootItem()
             for index in range(root.childCount()):
                 print("Children:%d"%root.child(index).childCount())
-                #if root.child(index).statusTip(0)==item_sub.text():
+                #if root.child(index).toolTip(0)==item_sub.text():
                 toRemove=[]
                 for ind2 in range(root.child(index).childCount()):
-                    print (root.child(index).child(ind2).statusTip(0))
-                    if root.child(index).child(ind2).statusTip(0)==item_sub.text():
+                    print (root.child(index).child(ind2).toolTip(0))
+                    if root.child(index).child(ind2).toolTip(0)==item_sub.text():
                         #print("Found: %d"%ind2)
                         toRemove.append(ind2)
-                    else:
-                        print("Not correct: %d"%ind2)
+#                    else:
+#                        print("Not correct: %d"%ind2)
                         
                         
                 for ind2 in toRemove:    
@@ -1064,11 +1169,57 @@ class StartQT(QtWidgets.QMainWindow):
             #For Resources
             self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#f79f99;")) #4d9900 - Green
             self.main_ui.lbl_status.setText('  Getting Resources')
-
             if item_sub.checkState(): #Item is Checked - checkState is True
-                pass
-            else:
-                pass
+                res_list=self.XConn.getResourcesList(self.curr_proj,item_sub.text()) #Get the Resource Directory
+                #Loop over the resource list
+                #   Get individual resource files
+                root=self.main_ui.tree_scans.invisibleRootItem()
+                for res in res_list:
+#                    if res['label'] not in self.resource_labels:
+#                        self.addResourceCheckBox(res['label'] )
+                    r_files=self.XConn.getResourceFiles(self.curr_proj,item_sub.text(),None,None,res['label'])
+                    #Check if Resource Already Exists
+                    fl_res_found=False
+                    for index in range(root.childCount()):
+                        if root.child(index).text(0)==res['label']:
+                            for aFile in r_files:
+                                child = QtWidgets.QTreeWidgetItem(root.child(index))
+                                child.setFlags(child.flags() | QtCore.Qt.ItemIsUserCheckable)
+                                child.setText(0,aFile['Name'])
+                                child.setCheckState(0,QtCore.Qt.Unchecked)
+                                child.setToolTip(0,item_sub.text())
+                            fl_res_found=True
+                            break
+                    #If Resource doesnt exist. Make a new Item with the label.
+                    if not fl_res_found: 
+                        parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_scans)
+                        parent.setText(0,res['label'])
+                        parent.setFlags(parent.flags()| QtCore.Qt.ItemIsTristate | QtCore.Qt.ItemIsUserCheckable)
+                        parent.setCheckState(0,QtCore.Qt.Unchecked)
+                        for aFile in r_files:
+                            child = QtWidgets.QTreeWidgetItem(parent)
+                            child.setFlags(child.flags() | QtCore.Qt.ItemIsUserCheckable)
+                            child.setText(0,aFile['Name'])
+                            child.setCheckState(0,QtCore.Qt.Unchecked)
+                            child.setToolTip(0,item_sub.text())
+            else:  #Item Unchecked
+                res_list=self.XConn.getResourcesList(self.curr_proj,item_sub.text()) #Get the Resource Directory
+                for res in res_list:
+#                    if res['label'] not in self.resource_labels:
+#                        self.addResourceCheckBox(res['label'] )
+                    r_files=self.XConn.getResourceFiles(self.curr_proj,item_sub.text(),None,None,res['label'])
+                    root=self.main_ui.tree_scans.invisibleRootItem()
+                    for index in range(root.childCount()):
+                        if root.child(index).text(0)==res['label']:
+                            for ind2 in range(root.child(index).childCount()):
+                                if root.child(index).child(ind2).toolTip(0)==item_sub.text():
+                                    root.child(index).removeChild(root.child(index).child(ind2))
+                                    if root.child(index).childCount()==0:
+                                        root.removeChild(root.child(index))
+                                    break
+                            break
+            self.main_ui.lbl_status.setStyleSheet(_fromUtf8("background-color:#4d9900;")) # f79f99 - Red
+            self.main_ui.lbl_status.setText('  Ready')
         elif self.fl_subjects_selection==0: #If "Sessions" is selected
             #For Sessions
             if not self.main_ui.tree_sessions.isEnabled():
@@ -1466,8 +1617,141 @@ class StartQT(QtWidgets.QMainWindow):
         """
         Upload selection Page
         """
-        pass
+        #self.main_ui.tree_upload_main.header().hide()
+        u_root=self.main_ui.tree_upload_main.invisibleRootItem()
+
+        #print(self.getUploadLevel())
+        
+        #Get Level at which to upload
+        if self.getUploadLevel()==1:
+            #pb_f_num=0
             
+            self.main_ui.tree_upload_main.setColumnCount(3)
+            self.main_ui.tree_upload_main.setHeaderLabels(('SubjectID','FileName/s','Browse'))
+            self.main_ui.tree_upload_main.setColumnWidth(0,300)
+            self.populate_uploadComboBox(1)
+            #f_num_int= int(round(50/len(self.dict_checked_all)))
+            #In my mental fight of choosing REST call vs looping over existing Tree, I chose the Tree. Coz it was easier
+            root=self.main_ui.tree_scans.invisibleRootItem()
+            for index in range(root.childCount()): #Looping Over Resource Names.
+                for ind2 in range(root.child(index).childCount()): #Looping Over Each Resource File
+                    fl_found_sub=False #Flag - Found Subject
+                    for u_index in range(u_root.childCount()):
+                        if u_root.child(u_index).text(0)==root.child(index).child(ind2).toolTip(0): #Found Subject
+                            fl_found_sub=True #Subject Found Yay
+                            fl_found_res=False #Flag Found Resource
+                            for u_ind2 in range(u_root.child(u_index).childCount()):
+                                if u_root.child(u_index).child(u_ind2).text(0)==root.child(index).text(0): #Found this resource
+                                    child = QtWidgets.QTreeWidgetItem(u_root.child(u_index).child(u_ind2))
+                                    child.setText(0,root.child(index).child(ind2).text(0))
+                                    fl_found_res=True
+                                    break
+                            if not fl_found_res:
+                                parent = QtWidgets.QTreeWidgetItem(u_root.child(u_index))
+                                parent.setText(0,root.child(index).text(0))
+                                child = QtWidgets.QTreeWidgetItem(parent)
+                                child.setText(0,root.child(index).child(ind2).text(0))                                
+                    if not fl_found_sub: #Subject not found. SO make one.
+                        #parent = QtWidgets.QTreeWidgetItem(u_root)
+                        #parent.setText(0,root.child(index).child(ind2).toolTip(0))
+                        parent=CustomTreeItem(u_root,root.child(index).child(ind2).toolTip(0))
+                        child = QtWidgets.QTreeWidgetItem(parent)
+                        child.setText(0,root.child(index).text(0))                             
+                        child2 = QtWidgets.QTreeWidgetItem(child)
+                        child2.setText(0,root.child(index).child(ind2).text(0))
+
+#                
+#            for subj in self.dict_checked_all:
+#                #pb_f_num+=f_num_int
+#                #pb_i_num=0
+#                #self.main_ui.pb_final.setValue(pb_f_num)
+#                #self.main_ui.pb_inter.setValue(pb_i_num)
+#                #i_num_int=int(round(50/len(self.dict_checked_all[subj])))
+#                t_subj=QtWidgets.QTreeWidgetItem(u_root)
+#                t_subj.setText(0,subj)
+#                #t_subj=CustomTreeItem(u_root,"====Resources===",)
+#                
+#                #t_sub.setToolTip(0,sess)
+#                t_subj_r=QtWidgets.QTreeWidgetItem(t_subj)
+#                t_subj_r.setText(0,"======Subject Resources======")
+                #t_sub.setToolTip(0,sess)
+
+        elif self.getUploadLevel()==2:
+            pass
+        elif self.getUploadLevel()==3:
+            pass
+        else: #Should never execute
+            print("This piece of code should have never run. WHAT DID YOU DO")
+        
+        
+    def getUploadLevel(self):
+        """
+        Returns the current level of selection in the UI.
+        If only project selected = 0
+        Subjects selected = 1
+        Sessions selected = 2
+        Scans selected = 3
+        """
+#        if len(self.dict_checked_all)==0:
+#            return 0  #This will NEVER Run coz fl_refresh_page4 flag is False at this point
+        if (self.main_ui.rb_subj_res.isChecked()) or (self.main_ui.rb_subj_sess.isChecked() and not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked()):
+            return 1
+        elif self.main_ui.rb_subj_sess.isChecked() and self.main_ui.rb_sess_res.isChecked():
+            return 2
+        elif self.main_ui.rb_subj_sess.isChecked() and self.main_ui.rb_sess_scans.isChecked():
+            return 3
+        else:
+            return 0
+            
+        
+    def populate_uploadComboBox(self,rtype):
+        """
+        Populating the list of Resource Names in the ComboBox/DropDownBox for the Upload UI.
+        Getting list from Config File
+        """
+        if rtype==1:
+            self.main_ui.cmb_up_res.addItems(self.sysConfig['upload-init']['subj-res'])
+        elif rtype==2:
+            self.main_ui.cmb_up_res.addItems(self.sysConfig['upload-init']['sess-res'])
+        elif rtype==3:
+            self.main_ui.cmb_up_res.addItems(self.sysConfig['upload-init']['scan-res'])
+    
+    def upload_clicked(self):
+        """
+        When "Upload" button is clicked in the Upload UI. Starts the upload process.
+        """
+        #self.main_ui.btn_upload.setEnabled(False)
+        root=self.main_ui.tree_upload_main.invisibleRootItem()
+        if self.getUploadLevel()==1:
+            res=self.getSelectedResourceName()
+            if not res or res.replace(" ","")=="": #Also avoids Spaces in Resource names. Keeping things Simple.
+                self.PopupDlg("Please pick a proper Resource Name to Upload to!")
+            else:
+                for subj in range(root.childCount()):
+                    
+                    sub_label=root.child(subj).name
+                    li_files=root.child(subj).getFilenames()
+                    for file_path in li_files:
+                        self.XConn.putResourceFile(self.curr_proj,sub_label,None,None,res.replace(" ",""),file_path)
+                    
+        elif self.getUploadLevel()==2:
+            pass
+        elif self.getUploadLevel()==3:
+            pass
+        else: #Should never execute
+            print("This piece of code should have never run. WHAT DID YOU DO")
+
+    def getSelectedResourceName(self):
+        """
+        Returns the name of the Resource to which to upload from the resource UI.
+        """
+        if self.main_ui.rb_up_res_existing.isChecked():
+            return self.main_ui.cmb_up_res.currentText()
+        elif self.main_ui.rb_up_res_new.isChecked():
+            return self.main_ui.edt_up_res.text()
+        else:
+            return False
+    
     def refresh_page5(self):
         header = ['Subject', 'Session', 'ScanID', 'ScanType','Quality']
         data_list=[]
@@ -1610,7 +1894,7 @@ class StartQT(QtWidgets.QMainWindow):
             #print("Success")
             self.XConn=XnatRest(self.host,self.uname,self.passwd,False)
             self.projects=self.XConn.getProjects()
-            if self.projects==0:
+            if not self.projects:
                 self.PopupDlg("Something doesn't seem right. Check your Username/Password/Hostname")
             elif self.XConn==0:
                 self.PopupDlg("Connection Issues. Please check if you are connected to the Internet/VPN")
@@ -1634,7 +1918,7 @@ class StartQT(QtWidgets.QMainWindow):
 #        for index in range(root.childCount()):
 #            for ind2 in range(root.child(index).childCount()):
 #                subj,scans=self.lookup_session(root.child(index).child(ind2).text(0))
-#                if self.lookup_scan_quality(subj,root.child(index).child(ind2).text(0),root.child(index).child(ind2).statusTip(0)) in qlabels:
+#                if self.lookup_scan_quality(subj,root.child(index).child(ind2).text(0),root.child(index).child(ind2).toolTip(0)) in qlabels:
 #                    print("Need this quality")
 #                hello
         #Cleanup prior data
@@ -1852,9 +2136,12 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.lst_cmd.clear()
         
     def reset_upload(self):
+        
         #self.main_ui.pb_final.setValue(50)
         self.main_ui.pb_inter.setValue(0)
         self.main_ui.tree_upload_main.clear()
+        self.main_ui.pb_final.setValue(50)
+        self.main_ui.pb_inter.setValue(0)
     
     def reset_process(self):
         """
@@ -1976,7 +2263,7 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.btn_reset.setEnabled(False)
         self.main_ui.btn_export_csv.setEnabled(False)
         self.main_ui.btn_export_xlsx.setEnabled(False)
-        self.main_ui.btn_up_res.setEnabled(False)
+        #self.main_ui.btn_up_res.setEnabled(False)
         self.main_ui.btn_upload.setEnabled(False)
         
         
@@ -2251,6 +2538,105 @@ class MyTableModel(QtCore.QAbstractTableModel):
         if order == QtCore.Qt.DescendingOrder:
             self.mylist.reverse()
         self.layoutChanged.emit()
+
+
+# ------------------------------------------------------------------------------
+# Custom QTreeWidgetItem
+# ------------------------------------------------------------------------------
+class CustomTreeItem( QtWidgets.QTreeWidgetItem ):
+    '''
+    Custom QTreeWidgetItem with Widgets
+    '''
+ 
+    def __init__( self, parent, name ):#,cmb_items):
+        '''
+        parent (QTreeWidget) : Item's QTreeWidget parent.
+        name   (str)         : Item's name. just an example.
+        '''
+ 
+        ## Init super class ( QtGui.QTreeWidgetItem )
+        super( CustomTreeItem, self ).__init__( parent )
+        self.parent=parent
+        ## Column 0 - Text:
+        self.setText( 0, name )
+        #self.setCheckState(0,QtCore.Qt.Unchecked)
+        
+        ## Column 1 - TextBox:
+        self.txt_filenm = QtWidgets.QLineEdit()
+        self.txt_filenm.setReadOnly(True)
+        self.treeWidget().setItemWidget( self, 1, self.txt_filenm )
+ 
+        ## Column 2 - Button:
+        self.button = QtWidgets.QPushButton()
+        self.button.setText( "Browse" )
+        self.treeWidget().setItemWidget( self, 2, self.button )
+        self.treeWidget().setExpandsOnDoubleClick(True)
+        self.treeWidget().setAnimated(True)
+        #self.treeWidget().setColumnWidth(0,300)
+        #self.treeWidget().resizeColumnToContents(0)
+        #self.treeWidget().setWordWrap(True)
+        
+        ## Column 3 - ComboBox
+#        self.cmb_res = QtWidgets.QComboBox()
+#        #Update data
+#        self.treeWidget().setItemWidget(self, 3, self.cmb_res)
+        ## Signals
+        #self.parent.connect(self.button,QtCore.SIGNAL("clicked()"), self.buttonPressed )
+        #QtCore.QObject.connect(self.button,QtCore.SIGNAL("clicked()"), self.buttonPressed )
+        
+        #Adding the resource names to the combobox
+        #self.addToCmb(cmb_items)
+        
+        #self.treeWidget().connect( self.button, QtCore.SIGNAL("clicked()"), self.buttonPressed)
+        self.button.clicked.connect(self.buttonPressed)
+        #File to Upload 
+        self.filenames=None
+        
+        #ComboBox Selection
+        #self.treeWidget().connect(self.cmb_res,QtCore.SIGNAL("currentIndexChanged(const QString&)"),self.cmb_index_changed)
+        #self.res_type=None
+   
+   
+    def getFilenames(self):
+        return self.filenames
+#    def getCmbTxt(self):
+#        return self.res_type
+
+    @property
+    def name(self):
+        '''
+        Return name ( 1st column text )
+        '''
+        return self.text(0)
+ 
+        
+#    def addToCmb(self,items):
+#        for itm in items:
+#            if self.cmb_res.findText(itm, QtCore.Qt.MatchFixedString) <0:
+#                self.cmb_res.addItem(itm)
+                
+#    def cmb_index_changed(self):
+#        self.res_type=self.cmb_res.currentText()
+ 
+    def buttonPressed(self):
+        '''
+        Triggered when Item's button pressed.
+        an example of using the Item's own values.
+        '''
+        
+        self.filenames=QtWidgets.QFileDialog.getOpenFileNames()[0] #The [1]th element is the filetype. Dont need it.
+        #if self.BrowseFileMsgBox()==1024:
+        self.txt_filenm.setText(",".join(str(filenm) for filenm in self.filenames))
+        #self.res_type=self.cmb_res.currentText()
+                                              
+#    def BrowseFileMsgBox(self):
+#        msg = QtGui.QMessageBox()
+#        msg.setIcon(QtGui.QMessageBox.Information)
+#        msg.setText("Are you sure this is the right file?")
+#        msg.setWindowTitle("Confirm Selection")
+#        msg.setStandardButtons(QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+#        return msg.exec_()
+
 
 
 class MyPopupDlg(QtWidgets.QDialog):

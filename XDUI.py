@@ -185,6 +185,12 @@ class StartQT(QtWidgets.QMainWindow):
         self.main_ui.chk_path_all_scans.clicked.connect(self.send2allScanChkBoxes)
         self.main_ui.cmb_path_txt.addItems(CMBPATH)
         
+        
+        #TextBox and Button to Select CSV file to highlight Sujects in the selection Box.
+        self.main_ui.btn_select_subj_csv.clicked.connect(self.get_subj_csv)
+        self.main_ui.edt_subj_csv.setReadOnly(True)
+        self.li_subs_to_highlight=[]
+        
         #CheckBox Export 
         self.main_ui.chk_export.clicked.connect(self.export_checked)
         
@@ -195,6 +201,7 @@ class StartQT(QtWidgets.QMainWindow):
         #Flag to denote all download destination paths are unique
         self.fl_download_paths_uniq=False
         self.dict_duplicate_paths=defaultdict(list)
+        
         
         #Download Options Radio Button Signals
         #QtCore.QObject.connect(self.main_ui.rb_prog2, QtCore.SIGNAL("toggled(bool)"), self.prog2_clicked)
@@ -272,7 +279,6 @@ class StartQT(QtWidgets.QMainWindow):
         
         self.fl_download_started=False
         #self.testTable()
-    
     
     
     def download_clicked(self):
@@ -1302,7 +1308,8 @@ class StartQT(QtWidgets.QMainWindow):
             """
             This will never run. NEVER. I think.
             """
-            self.PopupDlg("Select Sessions or Resources")
+            #self.PopupDlg("Select Sessions or Resources")
+            pass
 
     @memoise
     def lookup_session(self,sess):
@@ -1569,6 +1576,9 @@ class StartQT(QtWidgets.QMainWindow):
         
         
     def search_subj(self,text):
+        """
+        Searching Subject and Highlighting it in the ListWidget
+        """
         detail_logger.debug('Searching for '+text+' in Subject List')
         if not self.main_ui.rb_sess_scans.isChecked() and not self.main_ui.rb_sess_res.isChecked():
             self.PopupDlg("Please Select if you want to download Scans or Resources")
@@ -1581,6 +1591,9 @@ class StartQT(QtWidgets.QMainWindow):
                     self.main_ui.lst_subjects.item(index).setBackground(QtGui.QColor(255,255,255))
         
     def search_subjB(self,text):
+        """
+        Searching Subject and Highlighting it in the ListWidget
+        """
         detail_logger.debug('Searching for '+text+' in Subject List')
         text=text.replace(" ", "")
         for index in range(self.main_ui.lst_subjectsB.count()):
@@ -1844,6 +1857,39 @@ class StartQT(QtWidgets.QMainWindow):
             self.fl_refresh_page6=False
             self.refresh_page6()
             
+            
+    def highlight_csv_subjects(self):
+        """
+        Highlights Subjects that are in the csv file
+        """
+        detail_logger.debug('Highlighting SUbjects from CSV in Subject List')
+        if self.li_subs_to_highlight:
+            for index in range(self.main_ui.lst_subjectsB.count()):
+                if self.main_ui.lst_subjectsB.item(index).text() in self.li_subs_to_highlight:
+                    self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(215,189,226))
+                else:
+                    self.main_ui.lst_subjectsB.item(index).setBackground(QtGui.QColor(255,255,255))
+    
+            for index in range(self.main_ui.lst_subjects.count()):
+                if self.main_ui.lst_subjects.item(index).text() in self.li_subs_to_highlight:
+                    self.main_ui.lst_subjects.item(index).setBackground(QtGui.QColor(215,189,226))
+                else:
+                    self.main_ui.lst_subjects.item(index).setBackground(QtGui.QColor(255,255,255))
+
+
+    def get_subj_csv(self):
+        """
+        When Browse CSV for Subject HIghlighing is clicked
+        Taking only first column
+        """
+        path,ftype = QtWidgets.QFileDialog.getOpenFileName(self,'Get File','','CSV(*.csv)')
+        self.main_ui.edt_subj_csv.setText(path)
+        self.li_subs_to_highlight.clear()
+        with open(path, 'r') as f:
+            reader = csv.reader(f)
+            for row in reader:
+                self.li_subs_to_highlight.append(row[0])
+        self.highlight_csv_subjects()
 
     def export_to_csv(self):
         """
@@ -2064,6 +2110,9 @@ class StartQT(QtWidgets.QMainWindow):
                 tmp_item.setCheckState(0)
                 self.main_ui.lst_subjectsB.addItem(tmp_item)
 
+
+            #Highlighting Subjects if CSV present
+            self.highlight_csv_subjects()
 #            for sub in self.li_subs:
 #                parent = QtWidgets.QTreeWidgetItem(self.main_ui.tree_completion_status)
 #                parent.setText(0,sub['label'])
